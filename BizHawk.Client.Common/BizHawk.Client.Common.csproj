@@ -115,6 +115,7 @@
     <Compile Include="Api\JoypadButton.cs" />
     <Compile Include="BinarySaveStates.cs" />
     <Compile Include="BitmapBufferVideoProvider.cs" />
+    <Compile Include="services\HTTPClient.cs" />
     <Compile Include="config\Binding.cs" />
     <Compile Include="config\Config.cs" />
     <Compile Include="config\ConfigPersistAttribute.cs" />
@@ -148,6 +149,7 @@
     <Compile Include="lua\EmuLuaLibrary.Events.cs" />
     <Compile Include="lua\EmuLuaLibrary.GameInfo.cs" />
     <Compile Include="lua\EmuLuaLibrary.Genesis.cs" />
+    <Compile Include="lua\EmuLuaLibrary.Http.cs" />
     <Compile Include="lua\EmuLuaLibrary.Joypad.cs" />
     <Compile Include="lua\EmuLuaLibrary.MainMemory.cs" />
     <Compile Include="lua\EmuLuaLibrary.Memory.cs" />
@@ -252,6 +254,7 @@
     <Compile Include="RomLoader.cs" />
     <Compile Include="SaveSlotManager.cs" />
     <Compile Include="SavestateManager.cs" />
+    <Compile Include="services\HTTPServer.cs" />
     <Compile Include="SevenZipSharpArchiveHandler.cs" />
     <Compile Include="SevenZipWriter.cs" />
     <Compile Include="SharpZipWriter.cs" />

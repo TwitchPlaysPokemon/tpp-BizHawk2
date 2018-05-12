@@ -1,8 +1,7 @@
 ﻿using System;
 using NLua;
-using System.Net;
+using BizHawk.Client.Common.Services;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace BizHawk.Client.Common
 {
@@ -17,25 +16,13 @@ namespace BizHawk.Client.Common
 
 		public override string Name { get { return "http"; } }
 
-		#region Client Methods
-
 		[LuaMethod(
 			"postasync",
-			"asynchronously sends given data to the given url via HTTP POST and ignores the response"
+			"asynchronously sends given data to the given url via HTTP POST and will call a callback(response)"
 		)]
-		public void PostAsync(string url, string data)
+		public void PostAsync(string url, string data, LuaFunction callback = null)
 		{
-			try
-			{
-				using (var client = new WebClient())
-				{
-					client.UploadStringAsync(new Uri(url), data);
-				}
-			}
-			catch (Exception e)
-			{
-				LogOutputCallback(e.Message);
-			}
+			HTTPClient.PostAsync(url, data, (r, e) => callback?.Call(r ?? e?.Message ?? null)).ConfigureAwait(false);
 		}
 
 		[LuaMethod(
@@ -44,15 +31,16 @@ namespace BizHawk.Client.Common
 		)]
 		public string Post(string url, string data, bool silentFailure = true)
 		{
-			try
-			{
-				return webClient.UploadString(new Uri(url), data);
+			return HTTPClient.PostSync(url, data, !silentFailure);
+		}
 
-			}
-			catch (Exception e)
-			{
-				return silentFailure ? null : e.Message;
-			}
+		[LuaMethod(
+			"getasync",
+			"asynchronously gets data from the given url via HTTP GET and will call a callback(response)"
+		)]
+		public void GetAsync(string url, LuaFunction callback = null)
+		{
+			HTTPClient.GetAsync(url, (r, e) => callback?.Call(r ?? e?.Message ?? null)).ConfigureAwait(false);
 		}
 
 		[LuaMethod(
@@ -61,14 +49,19 @@ namespace BizHawk.Client.Common
 		)]
 		public string Get(string url, bool silentFailure = true)
 		{
-			try
-			{
-				return webClient.DownloadString(url);
-			}
-			catch (Exception e)
-			{
-				return silentFailure ? null : e.Message;
-			}
+			return HTTPClient.GetSync(url, !silentFailure);
+		}
+
+		[LuaMethod(
+			"requestasync",
+			"calls getasync or postasync based on parameters"
+		)]
+		public void RequestAsync(string url, string data = null, LuaFunction callback = null)
+		{
+			if (data == null)
+				GetAsync(url, callback);
+			else
+				PostAsync(url, data, callback);
 		}
 
 		[LuaMethod(
@@ -79,7 +72,8 @@ namespace BizHawk.Client.Common
 		{
 			if (data == null)
 				return Get(url);
-			return Post(url, data);
+			else
+				return Post(url, data);
 		}
 
 		[LuaMethod(
@@ -88,115 +82,46 @@ namespace BizHawk.Client.Common
 		)]
 		public void SetTimeout(int timeout)
 		{
-			Timeout = timeout;
+			HTTPClient.SyncTimeout = timeout;
 		}
 
-		private static int Timeout = 10;
 
-		private static ImpatientWebClient webClient = new ImpatientWebClient();
-
-		private class ImpatientWebClient : WebClient
+		[LuaMethod("listen", "Listens on the specified port and calls the given lua function whenever data arrives. Returned data is sent back to the caller")]
+		public string Listen(int port, LuaFunction luaf)
 		{
-			protected override WebRequest GetWebRequest(Uri uri)
+			try
 			{
-				WebRequest request = base.GetWebRequest(uri);
-				request.Timeout = Timeout;
-				return request;
-			}
-		}
-		#endregion
-
-		#region Server Methods
-
-		private Dictionary<int, LuaFunction> Handlers = new Dictionary<int, LuaFunction>();
-
-		private HttpListener Listener = null;
-
-		private void ListenHandler(IAsyncResult result)
-		{
-			var context = Listener.EndGetContext(result);
-			var queryString = Lua.NewTable();
-			foreach (var key in context.Request.QueryString.AllKeys)
-			{
-				queryString[key] = context.Request.QueryString[key];
-			}
-			var body = "";
-			if (context.Request.HasEntityBody)
-			{
-				using (System.IO.Stream bodyStream = context.Request.InputStream) // here we have data
+				return HTTPServer.Listen(port, (qs, body) =>
 				{
-					using (System.IO.StreamReader reader = new System.IO.StreamReader(bodyStream, context.Request.ContentEncoding))
-					{
-						body = reader.ReadToEnd();
-					}
-				}
-			}
-			var response = "ok";
-			lock (Handlers)
-			{
-				if (Handlers.ContainsKey(context.Request.Url.Port))
 					try
 					{
-						var resp = Handlers[context.Request.Url.Port].Call(queryString, body);
-						if (resp.Length > 0)
+						var queryString = Lua.NewTable();
+						foreach (var key in qs.Keys)
 						{
-							response = (resp?[0] ?? response).ToString();
+							queryString[key] = qs[key];
 						}
+						var result = luaf.Call(queryString, body);
+						if (result == null || result.Length < 1)
+						{
+							return null;
+						}
+						return result[0].ToString();
 					}
 					catch (Exception ex)
 					{
-						LogOutputCallback($"Error running listener function attached to port {context.Request.Url.Port}\nError message: {ex.Message}");
+						var err = $"Error running listener function attached to port {port}\nError message: {ex.Message}";
+						LogOutputCallback(err);
+						return err;
 					}
+				});
 			}
-			byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response);
-			// Get a response stream and write the response to it.
-			context.Response.ContentLength64 = buffer.Length;
-			using (System.IO.Stream output = context.Response.OutputStream)
+			catch (Exception e)
 			{
-				output.Write(buffer, 0, buffer.Length);
-				output.Close();
-			}
-			Listener.BeginGetContext(ListenHandler, Listener);
-		}
-
-		private void InitListener(int port)
-		{
-			if (!HttpListener.IsSupported)
-			{
-				throw new Exception("HTTPListener is not supported on this system.");
-			}
-			Listener = Listener ?? new HttpListener();
-			var listenTo = $"http://localhost:{port}/";
-			if (!Listener.Prefixes.Contains(listenTo))
-			{
-				Listener.Prefixes.Add(listenTo);
-			}
-			if (!Listener.IsListening)
-			{
-				Listener.Start();
-				LogOutputCallback($"Started listening for connections to {listenTo}");
-				Listener.BeginGetContext(ListenHandler, Listener);
-			}
-
-		}
-
-		[LuaMethod("listen", "Listens on the specified port and calls the given lua function whenever data arrives. Returned data is sent back to the caller")]
-		public void Listen(int port, LuaFunction luaf)
-		{
-			lock (Handlers)
-			{
-				Handlers[port] = luaf;
-				try
-				{
-					InitListener(port);
-				}
-				catch (Exception e)
-				{
-					LogOutputCallback($"Could not start listening on port {port}\n Exception: {e.Message}");
-				}
+				var err = $"Could not start listening on port {port}\n Exception: {e.Message}";
+				LogOutputCallback(err);
+				return err;
 			}
 		}
 
-		#endregion
 	}
 }
