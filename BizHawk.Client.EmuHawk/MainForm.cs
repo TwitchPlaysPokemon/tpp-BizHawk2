@@ -255,6 +255,8 @@ namespace BizHawk.Client.EmuHawk
 			GlobalWin.Tools = new ToolManager(this);
 			RewireSound();
 
+			GlobalWin.API = new Common.Services.ExternalAPI(Global.Config.ExternalApiPort, Emulator.ServiceProvider);
+
 			// Workaround for windows, location is -32000 when minimized, if they close it during this time, that's what gets saved
 			if (Global.Config.MainWndx == -32000)
 			{
@@ -3677,6 +3679,8 @@ namespace BizHawk.Client.EmuHawk
 						}
 					}
 
+					GlobalWin.API.Update(Emulator.ServiceProvider);
+
 					GlobalWin.Tools.Restart();
 
 					if (Global.Config.LoadCheatFileByGame)
@@ -3840,6 +3844,8 @@ namespace BizHawk.Client.EmuHawk
 				CoreFileProvider.SyncCoreCommInputSignals(coreComm);
 				Emulator = new NullEmulator(coreComm, Global.Config.GetCoreSettings<NullEmulator>());
 				Global.Game = GameInfo.NullInstance;
+
+				GlobalWin.API.Update(Emulator.ServiceProvider);
 
 				GlobalWin.Tools.Restart();
 				RewireSound();

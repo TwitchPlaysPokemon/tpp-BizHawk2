@@ -23,6 +23,8 @@ namespace BizHawk.Client.EmuHawk
 		public static DisplayManager DisplayManager;
 		public static GLManager GLManager;
 
+		public static Common.Services.ExternalAPI API;
+
 		public static int ExitCode;
 	}
 }

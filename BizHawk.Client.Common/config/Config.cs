@@ -378,6 +378,9 @@ namespace BizHawk.Client.Common
 		public string SoundDevice = "";
 		public int SoundBufferSizeMs = 100;
 
+		// API
+		public int ExternalApiPort = 5337;
+
 		// Log Window
 		public bool LogWindowSaveWindowPosition = true;
 		public int LogWindowWndx = -1;
