@@ -24,42 +24,79 @@ namespace BizHawk.Client.Common.Api.Public
 			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion)));
 			constructedCommands.Add(new ApiCommand("ReadByte", WrapMemoryCall((a, d) => (int)ReadUnsignedByte(a, d))));
 			constructedCommands.Add(new ApiCommand("WriteByte", WrapMemoryCall((a, v, d) => WriteUnsignedByte(a, (uint)v, d))));
-			for (var b = 1; b<= 4; b++) //8, 16, 24, and 32-bit commands
+
+			void ByteSizeCommands(int bytes)
 			{
-				constructedCommands.Add(new ApiCommand($"ReadS{b * 8}BE", WrapMemoryCall((a, d) => ReadSignedBig(a, b, d), b)));
-				constructedCommands.Add(new ApiCommand($"ReadS{b * 8}LE", WrapMemoryCall((a, d) => ReadSignedLittle(a, b, d), b)));
-				constructedCommands.Add(new ApiCommand($"ReadU{b * 8}BE", WrapMemoryCall((a, d) => (int)ReadUnsignedBig(a, b, d), b)));
-				constructedCommands.Add(new ApiCommand($"ReadU{b * 8}LE", WrapMemoryCall((a, d) => (int)ReadUnsignedLittle(a, b, d), b)));
-				constructedCommands.Add(new ApiCommand($"WriteS{b * 8}BE", WrapMemoryCall((a,v, d) => WriteSignedBig(a,v, b, d))));
-				constructedCommands.Add(new ApiCommand($"WriteS{b * 8}LE", WrapMemoryCall((a,v, d) => WriteSignedLittle(a, v,b, d))));
-				constructedCommands.Add(new ApiCommand($"WriteU{b * 8}BE", WrapMemoryCall((a, v, d) => WriteUnsignedBig(a, (uint)v, b, d))));
-				constructedCommands.Add(new ApiCommand($"WriteU{b * 8}LE", WrapMemoryCall((a, v, d) => WriteUnsignedLittle(a, (uint)v, b, d))));
+				constructedCommands.Add(new ApiCommand($"ReadS{bytes * 8}BE", WrapMemoryCall((a, d) => ReadSignedBig(a, bytes, d), bytes)));
+				constructedCommands.Add(new ApiCommand($"ReadS{bytes * 8}LE", WrapMemoryCall((a, d) => ReadSignedLittle(a, bytes, d), bytes)));
+				constructedCommands.Add(new ApiCommand($"ReadU{bytes * 8}BE", WrapMemoryCall((a, d) => (int)ReadUnsignedBig(a, bytes, d), bytes)));
+				constructedCommands.Add(new ApiCommand($"ReadU{bytes * 8}LE", WrapMemoryCall((a, d) => (int)ReadUnsignedLittle(a, bytes, d), bytes)));
+				constructedCommands.Add(new ApiCommand($"WriteS{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteSignedBig(a, v, bytes, d))));
+				constructedCommands.Add(new ApiCommand($"WriteS{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteSignedLittle(a, v, bytes, d))));
+				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteUnsignedBig(a, (uint)v, bytes, d))));
+				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteUnsignedLittle(a, (uint)v, bytes, d))));
 			}
+			for (var b = 1; b <= 4; ByteSizeCommands(b++)) ; //8, 16, 24, and 32-bit commands
 		}
 
 		private List<ApiCommand> constructedCommands = new List<ApiCommand>();
 
 		public override IEnumerable<ApiCommand> Commands => constructedCommands;
 
-		private int GetAddr(IEnumerable<string> args) => ParseRequired(args, 0, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Address");
+		private uint ParsePtr(string hex, string domainName)
+		{
+			try
+			{
+				if (hex.Contains('+') || hex.Contains('-'))
+				{
+					//TODO: Full of assumptions, add ways to clarify
+					var domain = Domain(domainName);
+					var pieces = hex.Split('+', '-');
+					var ptrAddr = uint.Parse(pieces[0], System.Globalization.NumberStyles.HexNumber);
+					var offset = uint.Parse(pieces[1], System.Globalization.NumberStyles.HexNumber);
+					var baseAddr = ReadUnsignedLittle((int)ptrAddr, 4, domainName);
+					if (baseAddr > (DomainList.HasSystemBus ? DomainList.SystemBus : DomainList.MainMemory).Size)
+					{
+						baseAddr = ReadUnsignedBig((int)ptrAddr, 4, domainName); //read insane value, must be big endian
+					}
+					baseAddr %= (uint)domain.Size;
+					if (hex.Contains('-'))
+					{
+						return baseAddr - offset;
+					}
+					return baseAddr + offset;
+				}
+				return uint.Parse(hex, System.Globalization.NumberStyles.HexNumber);
+			}
+			catch (ApiError)
+			{
+				throw;
+			}
+			catch
+			{
+				throw new ApiError($"Could not parse \"{hex}\" as hexadecimal memory address");
+			}
+		}
+
+		private int GetAddr(IEnumerable<string> args, string domain) => ParseRequired(args, 0, hex => (int)ParsePtr(hex, domain), "Address");
 		private int GetValue(IEnumerable<string> args) => ParseRequired(args, 1, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
 		private int GetLength(IEnumerable<string> args) => ParseRequired(args, 1, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
 		private byte[] GetData(IEnumerable<string> args) => ParseRequired(args, 1, HexStringToBytes, "Data");
 
 		// Reads
-		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, int> innerCall, int bytesOut = 1) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args), domain).ToString($"X{bytesOut * 2}");
+		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, int> innerCall, int bytesOut = 1) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain).ToString($"X{bytesOut * 2}");
 		// ReadRange
-		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => BytesToHexString(innerCall(GetAddr(args), GetLength(args), domain));
+		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => BytesToHexString(innerCall(GetAddr(args, domain), GetLength(args), domain));
 		// Writes
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Action<int, int, string> innerCall) => (IEnumerable<string> args, string domain) =>
 		{
-			innerCall(GetAddr(args), GetValue(args), domain);
+			innerCall(GetAddr(args, domain), GetValue(args), domain);
 			return null;
 		};
 		// WriteRange
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Action<int, byte[], string> innerCall) => (IEnumerable<string> args, string domain) =>
 		{
-			innerCall(GetAddr(args), GetData(args), domain);
+			innerCall(GetAddr(args, domain), GetData(args), domain);
 			return null;
 		};
 
