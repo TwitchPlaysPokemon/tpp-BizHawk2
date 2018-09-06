@@ -126,12 +126,15 @@ namespace BizHawk.Client.Common.Api.Public
 						domain = urlParams[0];
 						urlParams.RemoveAt(0);
 					}
-					command = Commands[urlParams[0]]?.Name ?? command;
+					command = urlParams[0];
 					urlParams.RemoveAt(0);
+
 					if (!Commands.ContainsKey(command))
 					{
 						throw new ApiError($"Invalid Command");
 					}
+					
+					command = Commands[command]?.Name; //normalize name for display during errors
 					response = Commands[command].Function(urlParams, domain) ?? response;
 				}
 			}

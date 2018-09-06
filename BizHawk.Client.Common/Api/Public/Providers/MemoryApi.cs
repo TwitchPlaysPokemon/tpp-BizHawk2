@@ -15,15 +15,16 @@ namespace BizHawk.Client.Common.Api.Public
 		private IEmulator Emulator { get; set; }
 
 		[OptionalService]
+		private IDisassemblable DisassemblableCore { get; set; }
+
+		[OptionalService]
 		private IMemoryDomains MemoryDomainCore { get; set; }
 		#endregion
 
 		public MemoryApi()
 		{
-			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMemoryCall(ReadRegion), DocParams.ReadParams, "Reads the byte at Address"));
-			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion), DocParams.WriteParams, "Writes the byte Value at Address"));
-			constructedCommands.Add(new ApiCommand("ReadByte", WrapMemoryCall((a, d) => (int)ReadUnsignedByte(a, d)), DocParams.ReadRange, "Reads Length bytes of data starting at Address"));
-			constructedCommands.Add(new ApiCommand("WriteByte", WrapMemoryCall((a, v, d) => WriteUnsignedByte(a, (uint)v, d)), DocParams.WriteRange, "Writes Data to memory starting at Address"));
+			constructedCommands.Add(new ApiCommand("ReadByte", WrapMemoryCall((a, d) => (int)ReadUnsignedByte(a, d)), DocParams.ReadParams, "Reads the byte at Address"));
+			constructedCommands.Add(new ApiCommand("WriteByte", WrapMemoryCall((a, v, d) => WriteUnsignedByte(a, (uint)v, d)), DocParams.WriteParams, "Writes the byte Value at Address"));
 
 			void ByteSizeCommands(int bytes)
 			{
@@ -37,6 +38,13 @@ namespace BizHawk.Client.Common.Api.Public
 				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteUnsignedLittle(a, (uint)v, bytes, d)), DocParams.WriteParams, $"Writes Value as an unsigned {bytes * 8}-bit little-endian integer at Address"));
 			}
 			for (var b = 1; b <= 4; ByteSizeCommands(b++)) ; //8, 16, 24, and 32-bit commands
+
+			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMemoryCall(ReadRegion), DocParams.ReadRange, "Reads Length bytes of memory starting at Address"));
+			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion), DocParams.WriteRange, "Writes Data to memory starting at Address"));
+
+			constructedCommands.Add(new ApiCommand("HashByteRange", WrapMemoryCall(HashRegion), DocParams.ReadRange, "Calculates the SHA256 hash of Length bytes of memory starting at Address"));
+
+			constructedCommands.Add(new ApiCommand("Disassemble", WrapMemoryCall((a, d) => Disassemble((uint)a, d)), DocParams.ReadParams, "Generates a disassembly of the instruction at Address"));
 		}
 
 		private static class DocParams
@@ -113,6 +121,8 @@ namespace BizHawk.Client.Common.Api.Public
 			innerCall(GetAddr(args, domain), GetData(args), domain);
 			return null;
 		};
+		// Disassemble
+		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, string> innerCall) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain);
 
 		private void _UseMemoryDomain(string domain) => _currentMemoryDomain = Domain(domain);
 
@@ -147,6 +157,18 @@ namespace BizHawk.Client.Common.Api.Public
 				return hasher.ComputeHash(ReadRegion(addr, count, domain));
 			}
 		}
+
+		private string Disassemble(uint address, string domainName = "")
+		{
+			if (DisassemblableCore == null)
+			{
+				throw new ApiError($"{Emulator.Attributes().CoreName} does not yet implement disassembly");
+			}
+
+			var d = DisassemblableCore.Disassemble(Domain(domainName), address, out int byteLength);
+			return $"{d}\t({byteLength} bytes)";
+		}
+
 
 		private MemoryDomain _currentMemoryDomain;
 
