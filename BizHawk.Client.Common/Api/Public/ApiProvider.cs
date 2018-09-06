@@ -15,6 +15,11 @@ namespace BizHawk.Client.Common.Api.Public
 			public ApiMissingError(string message = null) : base(message) { }
 		}
 
+		/// <summary>
+		/// Override in case the Api Provider needs to do extra data gathering after injected dependencies get updated
+		/// </summary>
+		public virtual void Update() { }
+
 		protected T ParseRequired<T>(IEnumerable<string> args, int index, Func<string, T> process, string name, string invalidError = null)
 		{
 			invalidError = invalidError ?? $"Provided {name} is invalid";

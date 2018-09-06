@@ -20,23 +20,37 @@ namespace BizHawk.Client.Common.Api.Public
 
 		public MemoryApi()
 		{
-			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMemoryCall(ReadRegion)));
-			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion)));
-			constructedCommands.Add(new ApiCommand("ReadByte", WrapMemoryCall((a, d) => (int)ReadUnsignedByte(a, d))));
-			constructedCommands.Add(new ApiCommand("WriteByte", WrapMemoryCall((a, v, d) => WriteUnsignedByte(a, (uint)v, d))));
+			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMemoryCall(ReadRegion), DocParams.ReadParams, "Reads the byte at Address"));
+			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion), DocParams.WriteParams, "Writes the byte Value at Address"));
+			constructedCommands.Add(new ApiCommand("ReadByte", WrapMemoryCall((a, d) => (int)ReadUnsignedByte(a, d)), DocParams.ReadRange, "Reads Length bytes of data starting at Address"));
+			constructedCommands.Add(new ApiCommand("WriteByte", WrapMemoryCall((a, v, d) => WriteUnsignedByte(a, (uint)v, d)), DocParams.WriteRange, "Writes Data to memory starting at Address"));
 
 			void ByteSizeCommands(int bytes)
 			{
-				constructedCommands.Add(new ApiCommand($"ReadS{bytes * 8}BE", WrapMemoryCall((a, d) => ReadSignedBig(a, bytes, d), bytes)));
-				constructedCommands.Add(new ApiCommand($"ReadS{bytes * 8}LE", WrapMemoryCall((a, d) => ReadSignedLittle(a, bytes, d), bytes)));
-				constructedCommands.Add(new ApiCommand($"ReadU{bytes * 8}BE", WrapMemoryCall((a, d) => (int)ReadUnsignedBig(a, bytes, d), bytes)));
-				constructedCommands.Add(new ApiCommand($"ReadU{bytes * 8}LE", WrapMemoryCall((a, d) => (int)ReadUnsignedLittle(a, bytes, d), bytes)));
-				constructedCommands.Add(new ApiCommand($"WriteS{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteSignedBig(a, v, bytes, d))));
-				constructedCommands.Add(new ApiCommand($"WriteS{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteSignedLittle(a, v, bytes, d))));
-				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteUnsignedBig(a, (uint)v, bytes, d))));
-				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteUnsignedLittle(a, (uint)v, bytes, d))));
+				constructedCommands.Add(new ApiCommand($"ReadS{bytes * 8}BE", WrapMemoryCall((a, d) => ReadSignedBig(a, bytes, d), bytes), DocParams.ReadParams, $"Reads the signed {bytes * 8}-bit big-endian value at Address"));
+				constructedCommands.Add(new ApiCommand($"ReadS{bytes * 8}LE", WrapMemoryCall((a, d) => ReadSignedLittle(a, bytes, d), bytes), DocParams.ReadParams, $"Reads the signed {bytes * 8}-bit little-endian value at Address"));
+				constructedCommands.Add(new ApiCommand($"ReadU{bytes * 8}BE", WrapMemoryCall((a, d) => (int)ReadUnsignedBig(a, bytes, d), bytes), DocParams.ReadParams, $"Reads the unsigned {bytes * 8}-bit big-endian value at Address"));
+				constructedCommands.Add(new ApiCommand($"ReadU{bytes * 8}LE", WrapMemoryCall((a, d) => (int)ReadUnsignedLittle(a, bytes, d), bytes), DocParams.ReadParams, $"Reads the unsigned {bytes * 8}-bit little-endian value at Address"));
+				constructedCommands.Add(new ApiCommand($"WriteS{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteSignedBig(a, v, bytes, d)), DocParams.WriteParams, $"Writes Value as a signed {bytes * 8}-bit big-endian integer at Address"));
+				constructedCommands.Add(new ApiCommand($"WriteS{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteSignedLittle(a, v, bytes, d)), DocParams.WriteParams, $"Writes Value as a signed, {bytes * 8}-bit little-endian integer at Address"));
+				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteUnsignedBig(a, (uint)v, bytes, d)), DocParams.WriteParams, $"Writes Value as an unsigned, {bytes * 8}-bit big-endian integer at Address"));
+				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteUnsignedLittle(a, (uint)v, bytes, d)), DocParams.WriteParams, $"Writes Value as an unsigned {bytes * 8}-bit little-endian integer at Address"));
 			}
 			for (var b = 1; b <= 4; ByteSizeCommands(b++)) ; //8, 16, 24, and 32-bit commands
+		}
+
+		private static class DocParams
+		{
+			public static ApiParameter Address = new ApiParameter("Address");
+			public static ApiParameter Value = new ApiParameter("Value");
+			public static ApiParameter Length = new ApiParameter("Length");
+			public static ApiParameter Domain = new ApiParameter("Domain", "string", true, true);
+			public static ApiParameter Data = new ApiParameter("Data", "bytes");
+
+			public static List<ApiParameter> ReadParams = new List<ApiParameter>() { Domain, Address };
+			public static List<ApiParameter> WriteParams = new List<ApiParameter>() { Domain, Address, Value };
+			public static List<ApiParameter> ReadRange = new List<ApiParameter>() { Domain, Address, Length };
+			public static List<ApiParameter> WriteRange = new List<ApiParameter>() { Domain, Address, Data };
 		}
 
 		private List<ApiCommand> constructedCommands = new List<ApiCommand>();

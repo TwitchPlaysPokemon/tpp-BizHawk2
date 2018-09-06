@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BizHawk.Emulation.Common;
 using System.Net;
+using System.Text;
 
 namespace BizHawk.Client.Common.Api.Public
 {
@@ -13,7 +14,8 @@ namespace BizHawk.Client.Common.Api.Public
 		public PublicApi(IEmulatorServiceProvider serviceProvider)
 		{
 			apiProviders = ReflectiveEnumerator.GetEnumerableOfType<ApiProvider>();
-			Commands["ListCommands"] = new ApiCommand("ListCommands", (args, domain) => string.Join("\n", Commands.Keys));
+			Documentation = new ApiCommand("Help", (args, domain) => string.Join("\n", Commands.Select(c => BuildDocString(c.Value))), new List<ApiParameter>(), "Lists available commands (This message)");
+			Commands["Help"] = Documentation;
 			foreach(var provider in apiProviders)
 			{
 				foreach(var command in provider.Commands)
@@ -22,6 +24,38 @@ namespace BizHawk.Client.Common.Api.Public
 				}
 			}
 			Update(serviceProvider);
+		}
+
+		private ApiCommand Documentation;
+
+		private string BuildDocString(ApiCommand command)
+		{
+			var docString = new StringBuilder(command.Name).Append(":\t");
+
+			void DocParam(ApiParameter parameter)
+			{
+				if (parameter != null)
+				{
+					docString.Append("/").Append(parameter.Optional ? '[' : '<').Append(parameter.Name);
+					if (!string.IsNullOrWhiteSpace(parameter.Type))
+						docString.Append(':').Append(parameter.Type);
+					docString.Append(parameter.Optional ? ']' : '>');
+				}
+			}
+
+			if (command.Parameters != null)
+			{
+				docString.Append("(Usage: \"");
+				DocParam(command.Parameters.FirstOrDefault(p => p.IsPrepend));
+				docString.Append('/').Append(command.Name);
+				foreach (var parameter in command.Parameters.Where(p => !p.IsPrepend))
+					DocParam(parameter);
+				docString.Append("\")\t");
+			}
+
+			docString.Append(command.Description ?? "No description provided");
+
+			return docString.ToString();
 		}
 
 		public void StartHttp(int port)
@@ -52,6 +86,7 @@ namespace BizHawk.Client.Common.Api.Public
 			foreach (var provider in apiProviders)
 			{
 				ServiceInjector.UpdateServices(newServiceProvider, provider);
+				provider.Update();
 			}
 		}
 
@@ -78,18 +113,27 @@ namespace BizHawk.Client.Common.Api.Public
 				var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
 				urlParams.Add(body);
 				urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-				string domain = null;
-				if (urlParams.Count > 1 && Commands.ContainsKey(urlParams[1]))
+
+				if (!urlParams.Any())
 				{
-					domain = urlParams[0];
+					response = Documentation.Function(null, null);
+				}
+				else
+				{
+					string domain = null;
+					if (urlParams.Count > 1 && Commands.ContainsKey(urlParams[1]))
+					{
+						domain = urlParams[0];
+						urlParams.RemoveAt(0);
+					}
+					command = Commands[urlParams[0]]?.Name ?? command;
 					urlParams.RemoveAt(0);
+					if (!Commands.ContainsKey(command))
+					{
+						throw new ApiError($"Invalid Command");
+					}
+					response = Commands[command].Function(urlParams, domain) ?? response;
 				}
-				command = Commands[urlParams[0]]?.Name ?? command;
-				urlParams.RemoveAt(0);
-				if (!Commands.ContainsKey(command)) {
-					throw new ApiError($"Invalid Command");
-				}
-				response = Commands[command].Function(urlParams, domain) ?? response;
 			}
 			catch (ApiError e)
 			{
