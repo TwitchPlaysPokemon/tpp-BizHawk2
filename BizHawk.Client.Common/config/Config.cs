@@ -379,7 +379,7 @@ namespace BizHawk.Client.Common
 		public int SoundBufferSizeMs = 100;
 
 		// API
-		public int ExternalApiPort = 5337;
+		public int PublicApiHttpPort = 5337;
 
 		// Log Window
 		public bool LogWindowSaveWindowPosition = true;

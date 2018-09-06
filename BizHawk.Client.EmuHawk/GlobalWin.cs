@@ -1,4 +1,5 @@
 ﻿using BizHawk.Bizware.BizwareGL;
+using BizHawk.Client.Common.Api.Public;
 
 // ReSharper disable StyleCop.SA1401
 namespace BizHawk.Client.EmuHawk
@@ -23,7 +24,7 @@ namespace BizHawk.Client.EmuHawk
 		public static DisplayManager DisplayManager;
 		public static GLManager GLManager;
 
-		public static Common.Services.ExternalAPI API;
+		public static PublicApi API;
 
 		public static int ExitCode;
 	}
