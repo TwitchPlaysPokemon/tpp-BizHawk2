@@ -37,7 +37,7 @@ namespace BizHawk.Client.Common.Api.Public
 				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}BE", WrapMemoryCall((a, v, d) => WriteUnsignedBig(a, (uint)v, bytes, d)), DocParams.WriteParams, $"Writes Value as an unsigned, {bytes * 8}-bit big-endian integer at Address"));
 				constructedCommands.Add(new ApiCommand($"WriteU{bytes * 8}LE", WrapMemoryCall((a, v, d) => WriteUnsignedLittle(a, (uint)v, bytes, d)), DocParams.WriteParams, $"Writes Value as an unsigned {bytes * 8}-bit little-endian integer at Address"));
 			}
-			for (var b = 1; b <= 4; ByteSizeCommands(b++)) ; //8, 16, 24, and 32-bit commands
+			for (var b = 2; b <= 4; ByteSizeCommands(b++)) ; //16, 24, and 32-bit commands
 
 			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMemoryCall(ReadRegion), DocParams.ReadRange, "Reads Length bytes of memory starting at Address"));
 			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion), DocParams.WriteRange, "Writes Data to memory starting at Address"));
