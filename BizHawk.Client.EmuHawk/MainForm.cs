@@ -4000,7 +4000,7 @@ namespace BizHawk.Client.EmuHawk
 			LoadState(path, quickSlotName, fromLua, supressOSD);
 		}
 
-		public void SaveState(string path, string userFriendlyStateName, bool fromLua)
+		public void SaveState(string path, string userFriendlyStateName, bool fromLua, bool suppressOSD = false)
 		{
 			if (!Emulator.HasSavestates())
 			{
@@ -4019,10 +4019,13 @@ namespace BizHawk.Client.EmuHawk
 
 				ClientApi.OnStateSaved(this, userFriendlyStateName);
 
-				GlobalWin.OSD.AddMessage("Saved state: " + userFriendlyStateName);
+				if (!suppressOSD)
+					GlobalWin.OSD.AddMessage("Saved state: " + userFriendlyStateName);
 			}
 			catch (IOException)
 			{
+				if (suppressOSD)
+					throw;
 				GlobalWin.OSD.AddMessage("Unable to save state " + path);
 			}
 

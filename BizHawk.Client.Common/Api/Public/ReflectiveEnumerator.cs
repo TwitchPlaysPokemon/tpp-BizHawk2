@@ -13,7 +13,12 @@ namespace BizHawk.Client.Common.Api.Public
 			List<T> objects = new List<T>();
 			foreach (Type type in
 				Assembly.GetAssembly(typeof(T)).GetTypes()
-				.Where(myType => myType.IsClass && !myType.IsAbstract && myType.IsSubclassOf(typeof(T))))
+				.Concat(Assembly.GetExecutingAssembly().GetTypes())
+				.Concat(Assembly.GetCallingAssembly().GetTypes())
+				.Concat(Assembly.GetEntryAssembly().GetTypes())
+				.Where(myType => myType.IsClass && !myType.IsAbstract && myType.IsSubclassOf(typeof(T)))
+				.Distinct()
+			)
 			{
 				objects.Add((T)Activator.CreateInstance(type, constructorArgs));
 			}

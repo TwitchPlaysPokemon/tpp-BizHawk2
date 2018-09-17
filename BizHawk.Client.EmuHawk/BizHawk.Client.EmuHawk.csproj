@@ -706,6 +706,7 @@
     <Compile Include="Sound\Utilities\SoundOutputProvider.cs" />
     <Compile Include="Throttle.cs" />
     <Compile Include="ToolAttribute.cs" />
+    <Compile Include="tools\API\ClientApi.cs" />
     <Compile Include="tools\AutoHawk.cs">
       <SubType>Form</SubType>
     </Compile>
