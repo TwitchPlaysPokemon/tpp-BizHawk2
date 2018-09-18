@@ -261,7 +261,8 @@ namespace BizHawk.Client.EmuHawk
 
 			GlobalWin.API = new Common.Api.Public.PublicApi(Emulator.ServiceProvider);
 
-			GlobalWin.API.StartHttp(Global.Config.PublicApiHttpPort);
+			GlobalWin.API.StartHttp(Global.Config.PublicApiHttpPort, GlobalWin.MainForm.Icon);
+
 
 			// Workaround for windows, location is -32000 when minimized, if they close it during this time, that's what gets saved
 			if (Global.Config.MainWndx == -32000)

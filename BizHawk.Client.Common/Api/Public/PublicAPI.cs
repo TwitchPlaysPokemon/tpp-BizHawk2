@@ -4,12 +4,16 @@ using System.Linq;
 using BizHawk.Emulation.Common;
 using System.Net;
 using System.Text;
+using System.IO;
+using System.Drawing;
 
 namespace BizHawk.Client.Common.Api.Public
 {
 	public class PublicApi
 	{
 		private HttpListener Listener;
+
+		public Icon Favicon { get; set; }
 
 		public PublicApi(IEmulatorServiceProvider serviceProvider)
 		{
@@ -58,12 +62,13 @@ namespace BizHawk.Client.Common.Api.Public
 			return docString.ToString();
 		}
 
-		public void StartHttp(int port)
+		public void StartHttp(int port, Icon favicon = null)
 		{
 			if (!HttpListener.IsSupported)
 			{
 				throw new Exception("HTTPListener is not supported on this system.");
 			}
+			Favicon = favicon ?? Favicon;
 			Listener = new HttpListener();
 			var listenTo = $"http://localhost:{port}/";
 			if (!Listener.Prefixes.Contains(listenTo))
@@ -105,56 +110,78 @@ namespace BizHawk.Client.Common.Api.Public
 					}
 				}
 			}
-			
-			var response = "ok";
-			string command = "Unknown Command";
-			try
-			{
-				var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
-				urlParams.Add(body);
-				urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
 
-				if (!urlParams.Any())
+			byte[] responseBuffer;
+
+			if (context.Request.RawUrl == "/favicon.ico")
+			{
+				if (Favicon == null)
 				{
-					response = Documentation.Function(null, null);
+					responseBuffer = new byte[0];
+					context.Response.StatusCode = 404;
 				}
 				else
 				{
-					string domain = null;
-					if (urlParams.Count > 1 && Commands.ContainsKey(urlParams[1]))
+					using (var stream = new MemoryStream())
 					{
-						domain = urlParams[0];
-						urlParams.RemoveAt(0);
+						Favicon.Save(stream);
+						responseBuffer = stream.ToArray();
+						context.Response.ContentType = "image/x-icon";
 					}
-					command = urlParams[0];
-					urlParams.RemoveAt(0);
-
-					if (!Commands.ContainsKey(command))
-					{
-						throw new ApiError($"Invalid Command");
-					}
-					
-					command = Commands[command]?.Name; //normalize name for display during errors
-					response = Commands[command].Function(urlParams, domain) ?? response;
 				}
 			}
-			catch (ApiError e)
+			else
 			{
-				response = $"{command}: {e.Message}";
-				context.Response.StatusCode = 400;
+				var response = "ok";
+				string command = "Unknown Command";
+				try
+				{
+					var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
+					urlParams.Add(body);
+					urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+
+					if (!urlParams.Any())
+					{
+						response = Documentation.Function(null, null);
+					}
+					else
+					{
+						string domain = null;
+						if (urlParams.Count > 1 && Commands.ContainsKey(urlParams[1]))
+						{
+							domain = urlParams[0];
+							urlParams.RemoveAt(0);
+						}
+						command = urlParams[0];
+						urlParams.RemoveAt(0);
+
+						if (!Commands.ContainsKey(command))
+						{
+							throw new ApiError($"Invalid Command");
+						}
+
+						command = Commands[command]?.Name; //normalize name for display during errors
+						response = Commands[command].Function(urlParams, domain) ?? response;
+					}
+				}
+				catch (ApiError e)
+				{
+					response = $"{command}: {e.Message}";
+					context.Response.StatusCode = 400;
+				}
+				catch (Exception e)
+				{
+					response = e.Message;
+					context.Response.StatusCode = 500;
+				}
+				responseBuffer = Encoding.UTF8.GetBytes(response);
+				context.Response.ContentType = "text/plain";
 			}
-			catch (Exception e)
-			{
-				response = e.Message;
-				context.Response.StatusCode = 500;
-			}
-			byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response);
 			// Get a response stream and write the response to it.
-			context.Response.ContentLength64 = buffer.Length;
-			context.Response.ContentType = "text/plain";
+			context.Response.ContentLength64 = responseBuffer.Length;
 			using (System.IO.Stream output = context.Response.OutputStream)
 			{
-				output.Write(buffer, 0, buffer.Length);
+				output.Write(responseBuffer, 0, responseBuffer.Length);
 				output.Close();
 			}
 			Listener.BeginGetContext(HttpListenHandler, Listener);
