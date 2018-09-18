@@ -35,6 +35,7 @@ using BizHawk.Emulation.Cores.Consoles.SNK;
 using BizHawk.Emulation.Cores.Consoles.Sega.PicoDrive;
 using BizHawk.Emulation.Cores.Consoles.Nintendo.Gameboy;
 using BizHawk.Emulation.Cores.Atari.A7800Hawk;
+using System.Windows.Threading;
 
 namespace BizHawk.Client.EmuHawk
 {
@@ -66,6 +67,7 @@ namespace BizHawk.Client.EmuHawk
 
 			HandleToggleLightAndLink();
 			SetStatusBar();
+			UIWorker = Dispatcher.CurrentDispatcher;
 
 			// New version notification
 			UpdateChecker.CheckComplete += (s2, e2) =>
@@ -85,6 +87,8 @@ namespace BizHawk.Client.EmuHawk
 			// If this isnt here, then our assemblyresolving hacks wont work due to the check for MainForm.INTERIM
 			// its.. weird. dont ask.
 		}
+
+		public Dispatcher UIWorker { get; private set; }
 
 		private CoreComm CreateCoreComm()
 		{
