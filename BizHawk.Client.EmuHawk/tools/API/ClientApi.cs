@@ -69,7 +69,7 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 
 		public void FlushSaveRAM() => GlobalWin.MainForm.FlushSaveRAM();
 
-		public static void LoadRom(string path) => GlobalWin.MainForm.LoadRom(path, new MainForm.LoadRomArgs { OpenAdvanced = OpenAdvancedSerializer.ParseWithLegacy(path) });
+		public static void LoadRom(string path) => GlobalWin.MainForm.LoadRom(path, new MainForm.LoadRomArgs { OpenAdvanced = OpenAdvancedSerializer.ParseWithLegacy(path), FromLua = true });
 
 		public static void CloseRom() => GlobalWin.MainForm.CloseRom();
 

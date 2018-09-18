@@ -3511,6 +3511,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			public bool? Deterministic { get; set; }
 			public IOpenAdvanced OpenAdvanced { get; set; }
+			public bool? FromLua { get; set; }
 		}
 
 		private LoadRomArgs _currentLoadRomArgs;
@@ -3560,7 +3561,10 @@ namespace BizHawk.Client.EmuHawk
 				};
 				Global.FirmwareManager.RecentlyServed.Clear();
 
-				loader.OnLoadError += ShowLoadError;
+				if (args?.FromLua ?? false)
+					loader.OnLoadError += (object sender, RomLoader.RomErrorArgs e) => throw new Exception(e.Message);
+				else
+					loader.OnLoadError += ShowLoadError;
 				loader.OnLoadSettings += CoreSettings;
 				loader.OnLoadSyncSettings += CoreSyncSettings;
 

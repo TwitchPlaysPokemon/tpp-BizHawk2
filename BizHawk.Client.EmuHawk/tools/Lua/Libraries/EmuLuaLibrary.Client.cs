@@ -178,7 +178,7 @@ namespace BizHawk.Client.EmuHawk
 		public static void OpenRom(string path)
 		{
 			var ioa = OpenAdvancedSerializer.ParseWithLegacy(path);
-			GlobalWin.MainForm.LoadRom(path, new MainForm.LoadRomArgs { OpenAdvanced = ioa });
+			GlobalWin.MainForm.LoadRom(path, new MainForm.LoadRomArgs { OpenAdvanced = ioa, FromLua = true });
 		}
 
 		[LuaMethod("opentasstudio", "opens the TAStudio dialog")]
