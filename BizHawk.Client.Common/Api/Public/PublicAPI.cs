@@ -151,7 +151,11 @@ namespace BizHawk.Client.Common.Api.Public
 				{
 					var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
 					urlParams.Add(body);
-					if (urlParams.Last() == null)
+					if (string.IsNullOrWhiteSpace(urlParams.FirstOrDefault()))
+					{
+						urlParams.RemoveAt(0);
+					}
+					if (string.IsNullOrWhiteSpace(urlParams.LastOrDefault()) && urlParams.Any())
 					{
 						urlParams.RemoveAt(urlParams.Count - 1);
 					}
