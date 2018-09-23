@@ -671,6 +671,7 @@ namespace BizHawk.Client.EmuHawk
 			}
 
 			GlobalWin.Tools.UpdateAfter();
+			GlobalWin.API.NewFrame();
 
 			if (Has<LuaConsole>())
 			{
@@ -700,6 +701,8 @@ namespace BizHawk.Client.EmuHawk
 			{
 				LuaConsole.ResumeScripts(true);
 			}
+
+			GlobalWin.API.NewFrame();
 
 			var afterList = _tools.Where(t => !t.UpdateBefore);
 			foreach (var tool in afterList)

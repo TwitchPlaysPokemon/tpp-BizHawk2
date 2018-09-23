@@ -15,6 +15,9 @@ namespace BizHawk.Client.Common.Api.Public
 
 		public Icon Favicon { get; set; }
 
+		[RequiredService]
+		private IEmulator Emulator { get; set; }
+
 		public PublicApi(IEmulatorServiceProvider serviceProvider)
 		{
 			apiProviders = ReflectiveEnumerator.GetEnumerableOfType<ApiProvider>();
@@ -82,12 +85,22 @@ namespace BizHawk.Client.Common.Api.Public
 			}
 		}
 
+		public void NewFrame()
+		{
+			var frame = Emulator.Frame;
+			foreach (var provider in apiProviders)
+			{
+				provider.OnFrame(frame);
+			}
+		}
+
 		private IEnumerable<ApiProvider> apiProviders;
 
 		public Dictionary<string, ApiCommand> Commands = new Dictionary<string, ApiCommand>(StringComparer.OrdinalIgnoreCase);
 
 		public void Update(IEmulatorServiceProvider newServiceProvider)
 		{
+			ServiceInjector.UpdateServices(newServiceProvider, this);
 			foreach (var provider in apiProviders)
 			{
 				ServiceInjector.UpdateServices(newServiceProvider, provider);
@@ -138,7 +151,11 @@ namespace BizHawk.Client.Common.Api.Public
 				{
 					var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
 					urlParams.Add(body);
-					urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+					if (urlParams.Last() == null)
+					{
+						urlParams.RemoveAt(urlParams.Count - 1);
+					}
+					//urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
 
 					if (!urlParams.Any())
 					{
@@ -164,15 +181,10 @@ namespace BizHawk.Client.Common.Api.Public
 						response = Commands[command].Function(urlParams, domain) ?? response;
 					}
 				}
-				catch (ApiError e)
-				{
-					response = $"{command}: {e.Message}";
-					context.Response.StatusCode = 400;
-				}
 				catch (Exception e)
 				{
-					response = e.Message;
-					context.Response.StatusCode = 500;
+					response = $"{command}: {e.Message}";
+					context.Response.StatusCode = e is ApiError ? 400 : 500;
 				}
 				responseBuffer = Encoding.UTF8.GetBytes(response);
 				context.Response.ContentType = "text/plain";

@@ -29,8 +29,8 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 
 		private static ApiParameter PathParam = new ApiParameter("Path", "string");
 
-		private static Func<IEnumerable<string>, string, string> WrapFunc<T>(Func<T> innerCall) => (IEnumerable<string> args, string domain) => JsonConvert.SerializeObject(innerCall());
-		private static Func<IEnumerable<string>, string, string> WrapVoid(Action innerCall) => (IEnumerable<string> args, string domain) =>
+		private static Func<IEnumerable<string>, string> WrapFunc<T>(Func<T> innerCall) => (IEnumerable<string> args) => JsonConvert.SerializeObject(innerCall());
+		private static Func<IEnumerable<string>, string> WrapVoid(Action innerCall) => (IEnumerable<string> args) =>
 		{
 			try
 			{
@@ -42,7 +42,7 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			}
 			return null;
 		};
-		private static Func<IEnumerable<string>, string, string> WrapPath(Action<string> innerCall, bool fileMustExist = true) => (IEnumerable<string> args, string domain) =>
+		private static Func<IEnumerable<string>, string> WrapPath(Action<string> innerCall, bool fileMustExist = true) => (IEnumerable<string> args) =>
 		{
 			var path = string.Join("\\", args);
 			try
@@ -57,7 +57,7 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			}
 			return null;
 		};
-		private static Func<IEnumerable<string>, string, string> WrapUITask(Func<IEnumerable<string>, string, string> innerCall) => (IEnumerable<string> args, string domain) => GlobalWin.MainForm.UIWorker.Invoke(innerCall, args, domain) as string;
+		private static Func<IEnumerable<string>, string> WrapUITask(Func<IEnumerable<string>, string> innerCall) => (IEnumerable<string> args) => GlobalWin.MainForm.UIWorker.Invoke(innerCall, args) as string;
 
 		public static void Quit() => GlobalWin.MainForm.CloseEmulator();
 

@@ -22,12 +22,12 @@ namespace BizHawk.Client.Common.Api.Public.Providers
 
 		public override IEnumerable<ApiCommand> Commands => new List<ApiCommand>()
 		{
-			new ApiCommand("FrameCount", (args, domain)=>Emulator.Frame.ToString(), new List<ApiParameter>(), "Returns the current frame count"),
-			new ApiCommand("GetRegisters", (args, domain)=>GetRegisters(), new List<ApiParameter>(), $"Returns the complete set of available flags and registers for the current core"),
-			new ApiCommand("GetRegister", (args, domain)=>GetRegister(args.FirstOrDefault() ?? throw new ApiError("Name was not provided")), new List<ApiParameter>(){ Name }, "Returns the value of a cpu register or flag specified by Name"),
-			new ApiCommand("SetRegister", (args, domain)=>SetRegister(args.FirstOrDefault() ?? throw new ApiError("Name was not provided"), args.ElementAtOrDefault(1) ?? throw new ApiError("Value was not provided")), new List<ApiParameter>(){ Name, Value }, "Sets the given register Name to the given Value"),
-			new ApiCommand("GetROMName", (args, domain)=>Global.Game?.Name ?? throw new ApiError("No ROM is loaded"), new List<ApiParameter>(), "Returns the name of the currently loaded ROM, if a ROM is loaded"),
-			new ApiCommand("GetROMHash", (args, domain)=>Global.Game?.Hash ?? throw new ApiError("No ROM is loaded"), new List<ApiParameter>(), "Returns the hash of the currently loaded ROM, if a ROM is loaded")
+			new ApiCommand("FrameCount", args=>Emulator.Frame.ToString(), new List<ApiParameter>(), "Returns the current frame count"),
+			new ApiCommand("GetRegisters", args=>GetRegisters(), new List<ApiParameter>(), $"Returns the complete set of available flags and registers for the current core"),
+			new ApiCommand("GetRegister", args=>GetRegister(args.FirstOrDefault() ?? throw new ApiError("Name was not provided")), new List<ApiParameter>(){ Name }, "Returns the value of a cpu register or flag specified by Name"),
+			new ApiCommand("SetRegister", args=>SetRegister(args.FirstOrDefault() ?? throw new ApiError("Name was not provided"), args.ElementAtOrDefault(1) ?? throw new ApiError("Value was not provided")), new List<ApiParameter>(){ Name, Value }, "Sets the given register Name to the given Value"),
+			new ApiCommand("GetROMName", args=>Global.Game?.Name ?? throw new ApiError("No ROM is loaded"), new List<ApiParameter>(), "Returns the name of the currently loaded ROM, if a ROM is loaded"),
+			new ApiCommand("GetROMHash", args=>Global.Game?.Hash ?? throw new ApiError("No ROM is loaded"), new List<ApiParameter>(), "Returns the hash of the currently loaded ROM, if a ROM is loaded")
 		};
 
 		private static ApiParameter Name = new ApiParameter("Name", "string");

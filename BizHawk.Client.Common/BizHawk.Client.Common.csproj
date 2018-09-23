@@ -116,7 +116,7 @@
     <Compile Include="Api\Public\ApiCommand.cs" />
     <Compile Include="Api\Public\ApiError.cs" />
     <Compile Include="Api\Public\ApiProvider.cs" />
-    <Compile Include="Api\Public\Providers\ControlApi.cs" />
+    <Compile Include="Api\Public\Providers\JoypadApi.cs" />
     <Compile Include="Api\Public\Providers\EmulatorApi.cs" />
     <Compile Include="Api\Public\ReflectiveEnumerator.cs" />
     <Compile Include="Api\Public\HexHelpers.cs" />

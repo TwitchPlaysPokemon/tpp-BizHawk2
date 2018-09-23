@@ -20,6 +20,13 @@ namespace BizHawk.Client.Common.Api.Public
 			Parameters = parameters;
 			Description = description;
 		}
+		public ApiCommand(string name, Func<IEnumerable<string>, string> func, IEnumerable<ApiParameter> parameters = null, string description = null) : this(name, (args, domain) => func(args), parameters, description) { }
+		public ApiCommand(string name, Action<IEnumerable<string>, string> action, IEnumerable<ApiParameter> parameters = null, string description = null): this(name, (args, domain) =>
+		{
+			action(args, domain);
+			return null;
+		}, parameters, description) { }
+		public ApiCommand(string name, Action<IEnumerable<string>> action, IEnumerable<ApiParameter> parameters = null, string description = null) : this(name, (args, domain) => action(args), parameters, description) { }
 	}
 
 	public class ApiParameter

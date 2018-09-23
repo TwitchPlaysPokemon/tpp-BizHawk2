@@ -20,6 +20,11 @@ namespace BizHawk.Client.Common.Api.Public
 		/// </summary>
 		public virtual void Update() { }
 
+		/// <summary>
+		/// Override in case the Api Provider needs to do work right before the emulator runs a frame
+		/// </summary>
+		public virtual void OnFrame(int frameCount) { }
+
 		protected T ParseRequired<T>(IEnumerable<string> args, int index, Func<string, T> process, string name, string invalidError = null)
 		{
 			invalidError = invalidError ?? $"Provided {name} is invalid";
