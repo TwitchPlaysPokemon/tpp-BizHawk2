@@ -14,6 +14,7 @@ namespace BizHawk.Emulation.Common
 		}
 
 		public string Name { get; set; }
+		public string Path { get; set; }
 		public string System { get; set; }
 		public string Hash { get; set; }
 		public string Region { get; set; }

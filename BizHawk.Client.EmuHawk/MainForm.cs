@@ -3625,6 +3625,7 @@ namespace BizHawk.Client.EmuHawk
 					string loaderName = "*" + OpenAdvancedSerializer.Serialize(ioa);
 					Emulator = loader.LoadedEmulator;
 					Global.Game = loader.Game;
+					Global.Game.Path = path;
 					CoreFileProvider.SyncCoreCommInputSignals(nextComm);
 					InputManager.SyncControls();
 
