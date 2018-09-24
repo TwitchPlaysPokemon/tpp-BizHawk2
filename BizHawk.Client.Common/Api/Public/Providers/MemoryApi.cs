@@ -21,6 +21,8 @@ namespace BizHawk.Client.Common.Api.Public
 		private IMemoryDomains MemoryDomainCore { get; set; }
 		#endregion
 
+		private AddressResolver resolver = new AddressResolver();
+
 		public MemoryApi()
 		{
 			constructedCommands.Add(new ApiCommand("ReadByte", WrapMemoryCall((a, d) => (int)ReadUnsignedByte(a, d)), DocParams.ReadParams, "Reads the byte at Address"));
@@ -65,42 +67,21 @@ namespace BizHawk.Client.Common.Api.Public
 
 		public override IEnumerable<ApiCommand> Commands => constructedCommands;
 
-		private uint ParsePtr(string hex, string domainName)
+		private uint ResolveAddress(string hex, string domainName)
 		{
 			try
 			{
-				if (hex.Contains('+') || hex.Contains('-'))
-				{
-					//TODO: Full of assumptions, add ways to clarify
-					var domain = Domain(domainName);
-					var pieces = hex.Split('+', '-');
-					var ptrAddr = uint.Parse(pieces[0], System.Globalization.NumberStyles.HexNumber);
-					var offset = uint.Parse(pieces[1], System.Globalization.NumberStyles.HexNumber);
-					var baseAddr = ReadUnsignedLittle((int)ptrAddr, 4, domainName);
-					if (baseAddr > (DomainList.HasSystemBus ? DomainList.SystemBus : DomainList.MainMemory).Size)
-					{
-						baseAddr = ReadUnsignedBig((int)ptrAddr, 4, domainName); //read insane value, must be big endian
-					}
-					baseAddr %= (uint)domain.Size;
-					if (hex.Contains('-'))
-					{
-						return baseAddr - offset;
-					}
-					return baseAddr + offset;
-				}
-				return uint.Parse(hex, System.Globalization.NumberStyles.HexNumber);
+				return resolver.ResolveAddress(hex, Domain(domainName));
 			}
-			catch (ApiError)
+			catch (Exception e)
 			{
-				throw;
-			}
-			catch
-			{
-				throw new ApiError($"Could not parse \"{hex}\" as hexadecimal memory address");
+				if (e is ApiError)
+					throw;
+				throw new ApiError($"Could not parse \"{hex}\" to a memory address");
 			}
 		}
 
-		private int GetAddr(IEnumerable<string> args, string domain) => ParseRequired(args, 0, hex => (int)ParsePtr(hex, domain), "Address");
+		private int GetAddr(IEnumerable<string> args, string domain) => ParseRequired(args, 0, hex => (int)ResolveAddress(hex, domain), "Address");
 		private int GetValue(IEnumerable<string> args) => ParseRequired(args, 1, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
 		private int GetLength(IEnumerable<string> args) => ParseRequired(args, 1, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
 		private byte[] GetData(IEnumerable<string> args) => ParseRequired(args, 1, HexStringToBytes, "Data");

@@ -47,6 +47,13 @@ namespace BizHawk.Client.Common
 			}
 		}
 
+		#region TPP Methods
+		private AddressResolver resolver = new AddressResolver();
+		[LuaMethod("resolveaddress", "Returns an address parsed from the provided AddressResolver syntax")]
+		public uint ResolveAddress(string addr, string domain = "") => resolver.ResolveAddress(addr, string.IsNullOrWhiteSpace(domain) ? Domain : DomainList[VerifyMemoryDomain(domain)]);
+
+		#endregion
+
 		#region Unique Library Methods
 
 		[LuaMethod("getmemorydomainlist", "Returns a string of the memory domains for the loaded platform core. List will be a single string delimited by line feeds")]
