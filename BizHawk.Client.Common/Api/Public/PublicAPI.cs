@@ -150,7 +150,10 @@ namespace BizHawk.Client.Common.Api.Public
 				try
 				{
 					var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
-					urlParams.Add(body);
+					if (!string.IsNullOrWhiteSpace(body))
+					{
+						urlParams.Add(body);
+					}
 					if (string.IsNullOrWhiteSpace(urlParams.FirstOrDefault()))
 					{
 						urlParams.RemoveAt(0);
