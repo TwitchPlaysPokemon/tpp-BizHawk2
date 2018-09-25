@@ -729,12 +729,12 @@ namespace BizHawk.Client.EmuHawk
 			return filterProgram;
 		}
 
-		public void Blank()
+		public void Blank(Color? blank = null)
 		{
 			GLManager.Activate(CR_GraphicsControl);
 			GL.BeginScene();
 			GL.BindRenderTarget(null);
-			GL.SetClearColor(Color.Black);
+			GL.SetClearColor(blank ?? Color.Black);
 			GL.Clear(OpenTK.Graphics.OpenGL.ClearBufferMask.ColorBufferBit);
 			GL.EndScene();
 			presentationPanel.GraphicsControl.SwapBuffers();
