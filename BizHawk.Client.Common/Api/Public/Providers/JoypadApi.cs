@@ -124,22 +124,6 @@ namespace BizHawk.Client.Common.Api.Public.Providers
 
 		public IEnumerable<string> PressedButtons => Buttons.Where(b => Global.AutofireStickyXORAdapter.IsPressed(b));
 
-		public IEnumerable<string> ParseButtonString(string buttons)
-		{
-			if (string.IsNullOrWhiteSpace(buttons)) return new List<string>();
-			buttons = buttons.ToLower();
-			var parsedButtons = new List<string>();
-			foreach (var button in Buttons.OrderByDescending(b => b.Length))
-			{
-				var index = buttons.IndexOf(button.ToLower());
-				if (index >= 0)
-				{
-					parsedButtons.Add(button);
-					buttons = buttons.Remove(index, button.Length);
-				}
-			}
-			return parsedButtons;
-		}
-
+		public IEnumerable<string> ParseButtonString(string buttons) => buttons.Split('+').Select(b => Buttons.FirstOrDefault(kb => string.Equals(b, kb, StringComparison.OrdinalIgnoreCase))).Where(b => !string.IsNullOrWhiteSpace(b));
 	}
 }
