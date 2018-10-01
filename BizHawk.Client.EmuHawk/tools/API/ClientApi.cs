@@ -21,8 +21,10 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("Pause", WrapUITask(WrapVoid(Pause)), new List<ApiParameter>(), "Pauses the emulator"),
 			new ApiCommand("Play", WrapUITask(WrapVoid(Play)), new List<ApiParameter>(), "Unpauses the emulator"),
 			new ApiCommand("IsPaused", WrapUITask(WrapFunc(IsPaused)), new List<ApiParameter>(), "Returns true if emulator is paused, otherwise false"),
-			new ApiCommand("Mute", WrapUITask(WrapVoid(Mute)), new List<ApiParameter>() { }, "Disables sound"),
+			new ApiCommand("Mute", WrapUITask(WrapVoid(Mute)), new List<ApiParameter>(), "Disables sound"),
 			new ApiCommand("Unmute", WrapUITask(WrapVoid(Unmute)), new List<ApiParameter>(), "Enables sound"),
+			new ApiCommand("Throttle", WrapUITask(WrapVoid(Throttle)), new List<ApiParameter>(), "Runs emulator at normal speed"),
+			new ApiCommand("Unthrottle", WrapUITask(WrapVoid((string frames)=>Unthrottle(string.IsNullOrWhiteSpace(frames) ? (int?)null : int.Parse(frames)))), new List<ApiParameter>() { FramesParam }, "Runs emulator at maximum speed, returning to normal after the provided number of Frames (if provided)"),
 			new ApiCommand("FlushSaveRAM", WrapUITask(WrapVoid(FlushSaveRAM)), new List<ApiParameter>(), "Flushes save ram to disk"),
 			new ApiCommand("LoadROM", WrapUITask(WrapPath(LoadRom)), new List<ApiParameter>(){ PathParam }, "Loads the ROM file at the given Path"),
 			new ApiCommand("CloseROM", WrapUITask(WrapVoid(CloseRom)), new List<ApiParameter>(), "Closes the loaded ROM"),
@@ -32,12 +34,13 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("StopDrawing", WrapUITask(WrapVoid(StopDrawing)), new List<ApiParameter>(), "Stops the emulator from writing to the screen"),
 			new ApiCommand("StartDrawing", WrapUITask(WrapVoid(StartDrawing)), new List<ApiParameter>(), "Allows the emulator to write to the screen"),
 			new ApiCommand("ClearScreen", WrapUITask(WrapVoid(ClearScreen)), new List<ApiParameter>() { ColorParam }, "Blanks the emulator screen"),
-			new ApiCommand("Stall", WrapUITask(WrapVoid(Stall)), new List<ApiParameter>() {ColorParam }, "Stalls the emulator on a blank screen"),
+			new ApiCommand("Stall", WrapUITask(WrapVoid(Stall)), new List<ApiParameter>() { ColorParam }, "Stalls the emulator on a blank screen"),
 			new ApiCommand("Resume", WrapUITask(WrapVoid(Resume)), new List<ApiParameter>(), "Resumes emulation after a Pause or Stall"),
 		};
 
 		private static ApiParameter PathParam = new ApiParameter("Path", "string");
 		private static ApiParameter ColorParam = new ApiParameter("Color", "hexcode", true);
+		private static ApiParameter FramesParam = new ApiParameter("Frames", optional: true);
 
 		private static Func<IEnumerable<string>, string> WrapFunc<T>(Func<T> innerCall) => (IEnumerable<string> args) => JsonConvert.SerializeObject(innerCall());
 		private static Func<IEnumerable<string>, string> WrapVoid(Action innerCall) => (IEnumerable<string> args) =>
@@ -123,7 +126,7 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 		public void StartDrawing() => Global.Config.DispSpeedupFeatures = 2;
 
 		public void ClearScreen(string color) => GlobalWin.DisplayManager.Blank(string.IsNullOrWhiteSpace(color) ? null as Color? : Color.FromArgb(int.Parse(color, System.Globalization.NumberStyles.HexNumber)));
-		
+
 		public void Stall(string color)
 		{
 			Pause();
@@ -146,5 +149,27 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 
 		public void Mute() => ToggleSound(false);
 		public void Unmute() => ToggleSound(true);
+
+		public void Throttle() => GlobalWin.MainForm.Throttle();
+
+		private int _unthrottleFrames = 0;
+
+		public void Unthrottle(int? frames = null)
+		{
+			GlobalWin.MainForm.Unthrottle();
+			_unthrottleFrames += frames ?? 0;
+		}
+
+		public override void OnFrame(int frameCount)
+		{
+			if (_unthrottleFrames > 0)
+			{
+				_unthrottleFrames--;
+				if (_unthrottleFrames <= 0)
+				{
+					Throttle();
+				}
+			}
+		}
 	}
 }
