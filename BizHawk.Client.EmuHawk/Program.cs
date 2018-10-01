@@ -151,8 +151,8 @@ namespace BizHawk.Client.EmuHawk
 				}
 				catch(Exception ex)
 				{
-					var e2 = new Exception("Initialization of Direct3d 9 Display Method failed; falling back to GDI+", ex);
-					new ExceptionBox(e2).ShowDialog();
+					//var e2 = new Exception("Initialization of Direct3d 9 Display Method failed; falling back to GDI+", ex);
+					//new ExceptionBox(e2).ShowDialog();
 
 					// fallback
 					Global.Config.DispMethod = Config.EDispMethod.GdiPlus;
@@ -180,8 +180,8 @@ namespace BizHawk.Client.EmuHawk
 			}
 			catch(Exception ex)
 			{
-				var e2 = new Exception("Initialization of Display Method failed; falling back to GDI+", ex);
-				new ExceptionBox(e2).ShowDialog();
+				//var e2 = new Exception("Initialization of Display Method failed; falling back to GDI+", ex);
+				//new ExceptionBox(e2).ShowDialog();
 				//fallback
 				Global.Config.DispMethod = Config.EDispMethod.GdiPlus;
 				goto REDO_DISPMETHOD;
