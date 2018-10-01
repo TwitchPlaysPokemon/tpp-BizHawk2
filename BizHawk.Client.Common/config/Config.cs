@@ -96,6 +96,7 @@ namespace BizHawk.Client.Common
 		public bool SaveWindowPosition = true;
 		public bool StartPaused = false;
 		public bool StartFullscreen = false;
+		public string CustomWindowTitle = null;
 		public int MainWndx = -1; // Negative numbers will be ignored
 		public int MainWndy = -1;
 		public int MainWidth = -1;

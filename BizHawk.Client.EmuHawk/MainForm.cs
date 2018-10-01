@@ -1485,6 +1485,11 @@ namespace BizHawk.Client.EmuHawk
 				str = "";
 			}
 
+			if (!string.IsNullOrWhiteSpace(Global.Config.CustomWindowTitle))
+			{
+				str = $"{(Emulator.IsNull() ? "BizHawk" : Global.SystemInfo.DisplayName)} - {Global.Config.CustomWindowTitle}";
+			}
+
 			Text = str;
 		}
 
