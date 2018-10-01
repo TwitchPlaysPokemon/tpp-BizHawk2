@@ -21,6 +21,8 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("Pause", WrapUITask(WrapVoid(Pause)), new List<ApiParameter>(), "Pauses the emulator"),
 			new ApiCommand("Play", WrapUITask(WrapVoid(Play)), new List<ApiParameter>(), "Unpauses the emulator"),
 			new ApiCommand("IsPaused", WrapUITask(WrapFunc(IsPaused)), new List<ApiParameter>(), "Returns true if emulator is paused, otherwise false"),
+			new ApiCommand("Mute", WrapUITask(WrapVoid(Mute)), new List<ApiParameter>() { }, "Disables sound"),
+			new ApiCommand("Unmute", WrapUITask(WrapVoid(Unmute)), new List<ApiParameter>(), "Enables sound"),
 			new ApiCommand("FlushSaveRAM", WrapUITask(WrapVoid(FlushSaveRAM)), new List<ApiParameter>(), "Flushes save ram to disk"),
 			new ApiCommand("LoadROM", WrapUITask(WrapPath(LoadRom)), new List<ApiParameter>(){ PathParam }, "Loads the ROM file at the given Path"),
 			new ApiCommand("CloseROM", WrapUITask(WrapVoid(CloseRom)), new List<ApiParameter>(), "Closes the loaded ROM"),
@@ -134,5 +136,15 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			StartDrawing();
 			Play();
 		}
+
+		private void ToggleSound(bool soundEnabled)
+		{
+			Global.Config.SoundEnabled = soundEnabled;
+			GlobalWin.Sound.StopSound();
+			GlobalWin.Sound.StartSound();
+		}
+
+		public void Mute() => ToggleSound(false);
+		public void Unmute() => ToggleSound(true);
 	}
 }
