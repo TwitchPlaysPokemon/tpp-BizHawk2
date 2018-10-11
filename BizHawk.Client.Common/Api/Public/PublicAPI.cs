@@ -112,100 +112,107 @@ namespace BizHawk.Client.Common.Api.Public
 		[HandleProcessCorruptedStateExceptions]
 		private void HttpListenHandler(IAsyncResult result)
 		{
-			var context = Listener.EndGetContext(result);
-
-			string body = null;
-			if (context.Request.HasEntityBody)
+			try
 			{
-				using (System.IO.Stream bodyStream = context.Request.InputStream)
+				var context = Listener.EndGetContext(result);
+
+				string body = null;
+				if (context.Request.HasEntityBody)
 				{
-					using (System.IO.StreamReader reader = new System.IO.StreamReader(bodyStream, context.Request.ContentEncoding))
+					using (System.IO.Stream bodyStream = context.Request.InputStream)
 					{
-						body = reader.ReadToEnd();
+						using (System.IO.StreamReader reader = new System.IO.StreamReader(bodyStream, context.Request.ContentEncoding))
+						{
+							body = reader.ReadToEnd();
+						}
 					}
 				}
-			}
 
-			byte[] responseBuffer;
+				byte[] responseBuffer;
 
-			if (context.Request.RawUrl == "/favicon.ico")
-			{
-				if (Favicon == null)
+				if (context.Request.RawUrl == "/favicon.ico")
 				{
-					responseBuffer = new byte[0];
-					context.Response.StatusCode = 404;
-				}
-				else
-				{
-					using (var stream = new MemoryStream())
+					if (Favicon == null)
 					{
-						Favicon.Save(stream);
-						responseBuffer = stream.ToArray();
-						context.Response.ContentType = "image/x-icon";
-					}
-				}
-			}
-			else
-			{
-				var response = "ok";
-				string command = "Unknown Command";
-				try
-				{
-					var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
-					if (!string.IsNullOrWhiteSpace(body))
-					{
-						urlParams.Add(body);
-					}
-					if (string.IsNullOrWhiteSpace(urlParams.FirstOrDefault()))
-					{
-						urlParams.RemoveAt(0);
-					}
-					if (string.IsNullOrWhiteSpace(urlParams.LastOrDefault()) && urlParams.Any())
-					{
-						urlParams.RemoveAt(urlParams.Count - 1);
-					}
-					//urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-
-					if (!urlParams.Any())
-					{
-						response = Documentation.Function(null, null);
+						responseBuffer = new byte[0];
+						context.Response.StatusCode = 404;
 					}
 					else
 					{
-						string domain = null;
-						if (urlParams.Count > 1 && Commands.ContainsKey(urlParams[1]))
+						using (var stream = new MemoryStream())
 						{
-							domain = urlParams[0];
-							urlParams.RemoveAt(0);
+							Favicon.Save(stream);
+							responseBuffer = stream.ToArray();
+							context.Response.ContentType = "image/x-icon";
 						}
-						command = urlParams[0];
-						urlParams.RemoveAt(0);
-
-						if (!Commands.ContainsKey(command))
-						{
-							throw new ApiError($"Invalid Command");
-						}
-
-						command = Commands[command]?.Name; //normalize name for display during errors
-						response = Commands[command].Function(urlParams, domain) ?? response;
 					}
 				}
-				catch (Exception e)
+				else
 				{
-					response = $"{command}: {e.Message}";
-					context.Response.StatusCode = e is ApiError ? 400 : 500;
+					var response = "ok";
+					string command = "Unknown Command";
+					try
+					{
+						var urlParams = new List<string>(context.Request.RawUrl.Split(new char[] { '/' })).Select(us => Uri.UnescapeDataString(us)).ToList();
+						if (!string.IsNullOrWhiteSpace(body))
+						{
+							urlParams.Add(body);
+						}
+						if (string.IsNullOrWhiteSpace(urlParams.FirstOrDefault()))
+						{
+							urlParams.RemoveAt(0);
+						}
+						if (string.IsNullOrWhiteSpace(urlParams.LastOrDefault()) && urlParams.Any())
+						{
+							urlParams.RemoveAt(urlParams.Count - 1);
+						}
+						//urlParams = urlParams.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+
+						if (!urlParams.Any())
+						{
+							response = Documentation.Function(null, null);
+						}
+						else
+						{
+							string domain = null;
+							if (urlParams.Count > 1 && Commands.ContainsKey(urlParams[1]))
+							{
+								domain = urlParams[0];
+								urlParams.RemoveAt(0);
+							}
+							command = urlParams[0];
+							urlParams.RemoveAt(0);
+
+							if (!Commands.ContainsKey(command))
+							{
+								throw new ApiError($"Invalid Command");
+							}
+
+							command = Commands[command]?.Name; //normalize name for display during errors
+							response = Commands[command].Function(urlParams, domain) ?? response;
+						}
+					}
+					catch (Exception e)
+					{
+						response = $"{command}: {e.Message}";
+						context.Response.StatusCode = e is ApiError ? 400 : 500;
+					}
+					responseBuffer = Encoding.UTF8.GetBytes(response);
+					context.Response.ContentType = "text/plain";
 				}
-				responseBuffer = Encoding.UTF8.GetBytes(response);
-				context.Response.ContentType = "text/plain";
+				// Get a response stream and write the response to it.
+				context.Response.ContentLength64 = responseBuffer.Length;
+				using (System.IO.Stream output = context.Response.OutputStream)
+				{
+					output.Write(responseBuffer, 0, responseBuffer.Length);
+					output.Close();
+				}
 			}
-			// Get a response stream and write the response to it.
-			context.Response.ContentLength64 = responseBuffer.Length;
-			using (System.IO.Stream output = context.Response.OutputStream)
+			catch { }
+			finally
 			{
-				output.Write(responseBuffer, 0, responseBuffer.Length);
-				output.Close();
+				Listener.BeginGetContext(HttpListenHandler, Listener);
 			}
-			Listener.BeginGetContext(HttpListenHandler, Listener);
 		}
 	}
 }
