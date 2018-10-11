@@ -27,7 +27,6 @@ namespace BizHawk.Client.Common.Api.Public
 
 		protected T ParseRequired<T>(IEnumerable<string> args, int index, Func<string, T> process, string name, string invalidError = null)
 		{
-			invalidError = invalidError ?? $"Provided {name} is invalid";
 			if (args.Count() <= index)
 			{
 				throw new ApiMissingError($"Parameter {name} is missing");
@@ -42,7 +41,7 @@ namespace BizHawk.Client.Common.Api.Public
 			}
 			catch
 			{
-				throw new ApiError(invalidError);
+				throw new ApiError(invalidError ?? $"Provided {name} \"{args.ElementAt(index)}\" is invalid");
 			}
 		}
 

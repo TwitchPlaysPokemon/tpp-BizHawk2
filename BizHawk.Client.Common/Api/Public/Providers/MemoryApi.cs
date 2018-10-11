@@ -41,7 +41,7 @@ namespace BizHawk.Client.Common.Api.Public
 			}
 			for (var b = 2; b <= 4; ByteSizeCommands(b++)) ; //16, 24, and 32-bit commands
 
-			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMemoryCall(ReadRegion), DocParams.ReadRange, "Reads Length bytes of memory starting at Address"));
+			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMultiMemoryCall(ReadRegion), DocParams.ReadRange, "Reads Length bytes of memory starting at Address"));
 			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion), DocParams.WriteRange, "Writes Data to memory starting at Address"));
 
 			constructedCommands.Add(new ApiCommand("HashByteRange", WrapMemoryCall(HashRegion), DocParams.ReadRange, "Calculates the SHA256 hash of Length bytes of memory starting at Address"));
@@ -104,6 +104,12 @@ namespace BizHawk.Client.Common.Api.Public
 		};
 		// Disassemble
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, string> innerCall) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain);
+
+		// ReadRangeMultiple
+		private Func<IEnumerable<string>, string, string> WrapMultiMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => string.Join("", 
+			//Enumerable.Zip(args, args.Skip(1), (addr, len) => new string[] { addr, len })
+			args.Select((val,i)=>new {val, i}).GroupBy(v=>v.i / 2).Select(g=>g.Select(v=>v.val))
+			.Select(a => BytesToHexString(innerCall(GetAddr(a, domain), GetLength(a), domain))));
 
 		private void _UseMemoryDomain(string domain) => _currentMemoryDomain = Domain(domain);
 
