@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.IO;
 using System.Drawing;
+using System.Runtime.ExceptionServices;
 
 namespace BizHawk.Client.Common.Api.Public
 {
@@ -108,6 +109,7 @@ namespace BizHawk.Client.Common.Api.Public
 			}
 		}
 
+		[HandleProcessCorruptedStateExceptions]
 		private void HttpListenHandler(IAsyncResult result)
 		{
 			var context = Listener.EndGetContext(result);
