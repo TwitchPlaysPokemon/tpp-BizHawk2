@@ -29,9 +29,16 @@ namespace BizHawk.Client.Common
 		"post",
 		"synchronously sends given data to the given url via HTTP POST and returns the response"
 		)]
-		public string Post(string url, string data, bool silentFailure = true)
+		public object Post(string url, string data)
 		{
-			return HTTPClient.PostSync(url, data, !silentFailure);
+			try
+			{
+				return new { response = HTTPClient.PostSync(url, data), status = 200 };
+			}
+			catch (HTTPClient.HttpException e)
+			{
+				return new { response = e.Message, status = e.StatusCode };
+			}
 		}
 
 		[LuaMethod(
@@ -47,9 +54,16 @@ namespace BizHawk.Client.Common
 			"get",
 			"synchronously gets data from the given url via HTTP GET"
 		)]
-		public string Get(string url, bool silentFailure = true)
+		public object Get(string url)
 		{
-			return HTTPClient.GetSync(url, !silentFailure);
+			try
+			{
+				return new { response = HTTPClient.GetSync(url), status = 200 };
+			}
+			catch (HTTPClient.HttpException e)
+			{
+				return new { response = e.Message, status = e.StatusCode };
+			}
 		}
 
 		[LuaMethod(
@@ -68,7 +82,7 @@ namespace BizHawk.Client.Common
 			"request",
 			"calls get or post based on parameters"
 		)]
-		public string Request(string url, string data = null)
+		public object Request(string url, string data = null)
 		{
 			if (data == null)
 				return Get(url);

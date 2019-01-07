@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,60 +9,88 @@ namespace BizHawk.Client.Common.Services
 {
 	public static class HTTPClient
 	{
-		public static async Task PostAsync(string url, string data, Action<string, Exception> callback = null)
+		public class HttpException : Exception
 		{
-			try
+			public int StatusCode { get; set; }
+			public HttpException(string message, int statusCode, Exception innerException = null) : base(message, innerException)
 			{
-				using (var client = new WebClient())
-				{
-					string response = await client.UploadStringTaskAsync(new Uri(url), data);
-					callback?.Invoke(response, null);
-				}
-			}
-			catch (Exception e)
-			{
-				callback?.Invoke(null, e);
+				StatusCode = statusCode;
 			}
 		}
 
-		public static string PostSync(string url, string data, bool returnException = false)
+		public static async Task PostAsync(string url, string data, Action<string, Exception> callback = null)
 		{
-			try
+			HttpResponseMessage response = null;
+			using (var client = new HttpClient())
 			{
-				return syncClient.UploadString(new Uri(url), data);
-
+				try
+				{
+					response = await client.PostAsync(url, new StringContent(data));
+					response.EnsureSuccessStatusCode();
+					callback?.Invoke(await response.Content.ReadAsStringAsync(), null);
+				}
+				catch (Exception e)
+				{
+					callback?.Invoke(null, new HttpException(e.Message, (int?)response?.StatusCode ?? 0, e));
+				}
 			}
-			catch (Exception e)
+		}
+
+		public static string PostSync(string url, string data)
+		{
+			HttpResponseMessage response = null;
+			using (var client = new HttpClient())
 			{
-				return returnException ? e.Message : null;
+				try
+				{
+					client.Timeout = new TimeSpan(0, 0, 0, 0, Timeout);
+					response = client.PostAsync(url, new StringContent(data)).Result;
+					response.EnsureSuccessStatusCode();
+					return response.Content.ReadAsStringAsync().Result;
+
+				}
+				catch (Exception e)
+				{
+					throw new HttpException(e.Message, (int?)response?.StatusCode ?? 0, e);
+				}
 			}
 		}
 
 		public static async Task GetAsync(string url, Action<string, Exception> callback = null)
 		{
-			try
+			HttpResponseMessage response = null;
+			using (var client = new HttpClient())
 			{
-				using (var client = new WebClient())
+				try
 				{
-					string response = await client.DownloadStringTaskAsync(url);
-					callback?.Invoke(response, null);
+					response = await client.GetAsync(url);
+					response.EnsureSuccessStatusCode();
+					callback?.Invoke(await response.Content.ReadAsStringAsync(), null);
 				}
-			}
-			catch (Exception e)
-			{
-				callback?.Invoke(null, e);
+				catch (Exception e)
+				{
+					callback?.Invoke(null, new HttpException(e.Message, (int?)response?.StatusCode ?? 0, e));
+				}
 			}
 		}
 
 		public static string GetSync(string url, bool returnException = false)
 		{
-			try
+			HttpResponseMessage response = null;
+			using (var client = new HttpClient())
 			{
-				return syncClient.DownloadString(url);
-			}
-			catch (Exception e)
-			{
-				return returnException ? e.Message : null;
+				try
+				{
+					client.Timeout = new TimeSpan(0, 0, 0, 0, Timeout);
+					response = client.GetAsync(url).Result;
+					response.EnsureSuccessStatusCode();
+					return response.Content.ReadAsStringAsync().Result;
+
+				}
+				catch (Exception e)
+				{
+					throw new HttpException(e.Message, (int?)response?.StatusCode ?? 0, e);
+				}
 			}
 		}
 
@@ -74,20 +102,6 @@ namespace BizHawk.Client.Common.Services
 			}
 		}
 
-		private static int Timeout;
-		private static ImpatientWebClient syncClient = new ImpatientWebClient();
-
-		private class ImpatientWebClient : WebClient
-		{
-			protected override WebRequest GetWebRequest(Uri uri)
-			{
-				WebRequest request = base.GetWebRequest(uri);
-				if (Timeout > 0)
-				{
-					request.Timeout = Timeout;
-				}
-				return request;
-			}
-		}
+		private static int Timeout = 100;
 	}
 }
