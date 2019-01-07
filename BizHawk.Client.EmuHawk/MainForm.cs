@@ -2807,6 +2807,13 @@ namespace BizHawk.Client.EmuHawk
 			StepRunLoop_Core(true);
 		}
 
+		public void SeekRewind()
+		{
+			PressRewind = true;
+			StepRunLoop_Core(true);
+			PressRewind = false;
+		}
+
 		public void SeekFrameAdvance()
 		{
 			PressFrameAdvance = true;

@@ -24,7 +24,7 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("Mute", WrapUITask(WrapVoid(Mute)), new List<ApiParameter>(), "Disables sound"),
 			new ApiCommand("Unmute", WrapUITask(WrapVoid(Unmute)), new List<ApiParameter>(), "Enables sound"),
 			new ApiCommand("Throttle", WrapUITask(WrapVoid(Throttle)), new List<ApiParameter>(), "Runs emulator at normal speed"),
-			new ApiCommand("Unthrottle", WrapUITask(WrapVoid((string frames)=>Unthrottle(string.IsNullOrWhiteSpace(frames) ? (int?)null : int.Parse(frames)))), new List<ApiParameter>() { FramesParam }, "Runs emulator at maximum speed, returning to normal after the provided number of Frames (if provided)"),
+			new ApiCommand("Unthrottle", WrapUITask(WrapVoid(frames=>Unthrottle(string.IsNullOrWhiteSpace(frames) ? (int?)null : int.Parse(frames)))), new List<ApiParameter>() { FramesParam }, "Runs emulator at maximum speed, returning to normal after the provided number of Frames (if provided)"),
 			new ApiCommand("FlushSaveRAM", WrapUITask(WrapVoid(FlushSaveRAM)), new List<ApiParameter>(), "Flushes save ram to disk"),
 			new ApiCommand("LoadROM", WrapUITask(WrapPath(LoadRom)), new List<ApiParameter>(){ PathParam }, "Loads the ROM file at the given Path"),
 			new ApiCommand("CloseROM", WrapUITask(WrapVoid(CloseRom)), new List<ApiParameter>(), "Closes the loaded ROM"),
@@ -36,11 +36,17 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("ClearScreen", WrapUITask(WrapVoid(ClearScreen)), new List<ApiParameter>() { ColorParam }, "Blanks the emulator screen"),
 			new ApiCommand("Stall", WrapUITask(WrapVoid(Stall)), new List<ApiParameter>() { ColorParam }, "Stalls the emulator on a blank screen"),
 			new ApiCommand("Resume", WrapUITask(WrapVoid(Resume)), new List<ApiParameter>(), "Resumes emulation after a Pause or Stall"),
+			new ApiCommand("FrameAdvance", WrapUITask(WrapVoid(FrameAdvance)), new List<ApiParameter>(), "Advances one frame"),
+			new ApiCommand("FrameRewind", WrapUITask(WrapVoid(FrameRewind)), new List<ApiParameter>(), "Rewinds one frame"),
+			new ApiCommand("ToggleRewind", WrapUITask(WrapVoid(rewindOn=>ToggleRewind(string.IsNullOrWhiteSpace(rewindOn) ? (bool?)null : bool.Parse(rewindOn)))), new List<ApiParameter>(){ ToggleParam }, "Turns rewinding on and off"),
+			new ApiCommand("ToggleFastForward", WrapUITask(WrapVoid(fastOn=>ToggleFastForward(string.IsNullOrWhiteSpace(fastOn) ? (bool?)null : bool.Parse(fastOn)))), new List<ApiParameter>(){ ToggleParam }, "Turns fast forward on and off"),
 		};
+
 
 		private static ApiParameter PathParam = new ApiParameter("Path", "string");
 		private static ApiParameter ColorParam = new ApiParameter("Color", "hexcode", true);
 		private static ApiParameter FramesParam = new ApiParameter("Frames", optional: true);
+		private static ApiParameter ToggleParam = new ApiParameter("Toggle", "boolean", optional: true);
 
 		private static Func<IEnumerable<string>, string> WrapFunc<T>(Func<T> innerCall) => (IEnumerable<string> args) => JsonConvert.SerializeObject(innerCall());
 		private static Func<IEnumerable<string>, string> WrapVoid(Action innerCall) => (IEnumerable<string> args) =>
@@ -91,6 +97,14 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 		public static void Pause() => GlobalWin.MainForm.PauseEmulator();
 
 		public static void Play() => GlobalWin.MainForm.UnpauseEmulator();
+
+		public static void FrameRewind() => GlobalWin.MainForm.SeekRewind();
+
+		public static void FrameAdvance() => GlobalWin.MainForm.SeekFrameAdvance();
+
+		public static void ToggleRewind(bool? rewindOn = null) => GlobalWin.MainForm.PressRewind = rewindOn ?? !GlobalWin.MainForm.PressRewind;
+
+		public static void ToggleFastForward(bool? fastOn = null) => GlobalWin.MainForm.FastForward = fastOn ?? !GlobalWin.MainForm.FastForward;
 
 		public void FlushSaveRAM() => GlobalWin.MainForm.FlushSaveRAM();
 
