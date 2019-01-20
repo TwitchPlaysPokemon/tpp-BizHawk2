@@ -47,6 +47,9 @@ namespace BizHawk.Client.Common.Api.Public
 			constructedCommands.Add(new ApiCommand("HashByteRange", WrapMemoryCall(HashRegion), DocParams.ReadRange, "Calculates the SHA256 hash of Length bytes of memory starting at Address"));
 
 			constructedCommands.Add(new ApiCommand("Disassemble", WrapMemoryCall((a, d) => Disassemble((uint)a, d)), DocParams.ReadParams, "Generates a disassembly of the instruction at Address"));
+
+			constructedCommands.Add(new ApiCommand("MemoryDomains", (a, d) => string.Join("\n", DomainList?.Select(m => m.Name)), new List<ApiParameter>(), "Lists available memory domains for the current core."));
+			constructedCommands.Add(new ApiCommand("SetDefaultMemoryDomain", (a, d) => _UseMemoryDomain(a.FirstOrDefault() ?? d), new List<ApiParameter>() { new ApiParameter("Domain", "string") }, "Sets which memory domain gets used when no domain is provided"));
 		}
 
 		private static class DocParams
@@ -106,9 +109,9 @@ namespace BizHawk.Client.Common.Api.Public
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, string> innerCall) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain);
 
 		// ReadRangeMultiple
-		private Func<IEnumerable<string>, string, string> WrapMultiMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => string.Join("", 
+		private Func<IEnumerable<string>, string, string> WrapMultiMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => string.Join("",
 			//Enumerable.Zip(args, args.Skip(1), (addr, len) => new string[] { addr, len })
-			args.Select((val,i)=>new {val, i}).GroupBy(v=>v.i / 2).Select(g=>g.Select(v=>v.val))
+			args.Select((val, i) => new { val, i }).GroupBy(v => v.i / 2).Select(g => g.Select(v => v.val))
 			.Select(a => BytesToHexString(innerCall(GetAddr(a, domain), GetLength(a), domain))));
 
 		private void _UseMemoryDomain(string domain) => _currentMemoryDomain = Domain(domain);
@@ -158,6 +161,12 @@ namespace BizHawk.Client.Common.Api.Public
 
 
 		private MemoryDomain _currentMemoryDomain;
+
+		public override void Update()
+		{
+			_currentMemoryDomain = null; //release reference to old memory
+			base.Update();
+		}
 
 		private MemoryDomain CurrentDomain => _currentMemoryDomain ?? (_currentMemoryDomain = DomainList.HasSystemBus ? DomainList.SystemBus : DomainList.MainMemory);
 		private IMemoryDomains DomainList => MemoryDomainCore ?? throw new ApiError($"{Emulator.Attributes().CoreName} does not implement memory domains");
