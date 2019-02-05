@@ -40,12 +40,14 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("FrameRewind", WrapUITask(WrapVoid(FrameRewind)), new List<ApiParameter>(), "Rewinds one frame"),
 			new ApiCommand("ToggleRewind", WrapUITask(WrapVoid(rewindOn=>ToggleRewind(string.IsNullOrWhiteSpace(rewindOn) ? (bool?)null : bool.Parse(rewindOn)))), new List<ApiParameter>(){ ToggleParam }, "Turns rewinding on and off"),
 			new ApiCommand("ToggleFastForward", WrapUITask(WrapVoid(fastOn=>ToggleFastForward(string.IsNullOrWhiteSpace(fastOn) ? (bool?)null : bool.Parse(fastOn)))), new List<ApiParameter>(){ ToggleParam }, "Turns fast forward on and off"),
+			new ApiCommand("SetSpeedPercent", WrapUITask(WrapVoid(speed=>SetSpeed(string.IsNullOrWhiteSpace(speed) ? 100 : int.Parse(speed)))), new List<ApiParameter>() { SpeedParam }, "Runs emulator at the given Speed (100 is normal)"),
 		};
 
 
 		private static ApiParameter PathParam = new ApiParameter("Path", "string");
-		private static ApiParameter ColorParam = new ApiParameter("Color", "hexcode", true);
-		private static ApiParameter FramesParam = new ApiParameter("Frames", optional: true);
+		private static ApiParameter SpeedParam = new ApiParameter("Speed", "int(dec)", optional: true);
+		private static ApiParameter ColorParam = new ApiParameter("Color", "hexcode", optional: true);
+		private static ApiParameter FramesParam = new ApiParameter("Frames", "int(dec)", optional: true);
 		private static ApiParameter ToggleParam = new ApiParameter("Toggle", "boolean", optional: true);
 
 		private static Func<IEnumerable<string>, string> WrapFunc<T>(Func<T> innerCall) => (IEnumerable<string> args) => JsonConvert.SerializeObject(innerCall());
@@ -165,6 +167,8 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 		public void Unmute() => ToggleSound(true);
 
 		public void Throttle() => GlobalWin.MainForm.Throttle();
+
+		public void SetSpeed(int speed) => Global.Config.SpeedPercent = speed;
 
 		private int _unthrottleFrames = 0;
 
