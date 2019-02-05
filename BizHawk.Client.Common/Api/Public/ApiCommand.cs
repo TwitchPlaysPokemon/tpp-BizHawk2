@@ -36,7 +36,7 @@ namespace BizHawk.Client.Common.Api.Public
 		public bool Optional { get; private set; }
 		public bool IsPrepend { get; private set; }
 
-		public ApiParameter(string name, string type = "int", bool optional = false, bool isPrepend = false)
+		public ApiParameter(string name, string type = "int(hex)", bool optional = false, bool isPrepend = false)
 		{
 			Name = name;
 			Type = type;

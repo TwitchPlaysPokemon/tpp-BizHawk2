@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
 using static BizHawk.Client.Common.Api.Public.HexHelpers;
@@ -13,6 +14,9 @@ namespace BizHawk.Client.Common.Api.Public
 		#region Injected Dependencies
 		[RequiredService]
 		private IEmulator Emulator { get; set; }
+
+		[OptionalService]
+		private IDebuggable DebuggableCore { get; set; }
 
 		[OptionalService]
 		private IDisassemblable DisassemblableCore { get; set; }
@@ -50,20 +54,28 @@ namespace BizHawk.Client.Common.Api.Public
 
 			constructedCommands.Add(new ApiCommand("MemoryDomains", (a, d) => string.Join("\n", DomainList?.Select(m => m.Name)), new List<ApiParameter>(), "Lists available memory domains for the current core."));
 			constructedCommands.Add(new ApiCommand("SetDefaultMemoryDomain", (a, d) => _UseMemoryDomain(a.FirstOrDefault() ?? d), new List<ApiParameter>() { new ApiParameter("Domain", "string") }, "Sets which memory domain gets used when no domain is provided"));
+
+			constructedCommands.Add(new ApiCommand("OnMemoryRead", WrapMemoryCall(MemoryCallbackType.Read, SetMemoryEvent), DocParams.EventParams, "Blocks emulation and connects to the provided CallbackUrl when Address (Length bytes) is read from. System Bus only. Returns the Name of the callback in case you wish to remove it later."));
+			constructedCommands.Add(new ApiCommand("OnMemoryWrite", WrapMemoryCall(MemoryCallbackType.Write, SetMemoryEvent), DocParams.EventParams, "Blocks emulation and connects to the provided CallbackUrl when Address (Length bytes) is written to. System Bus only. Returns the Name of the callback in case you wish to remove it later."));
+			constructedCommands.Add(new ApiCommand("OnMemoryExecute", WrapMemoryCall(MemoryCallbackType.Execute, SetMemoryEvent), DocParams.EventParams, "Blocks emulation and connects to the provided CallbackUrl when Address (Length bytes) is executed. System Bus only. Returns the Name of the callback in case you wish to remove it later."));
+			constructedCommands.Add(new ApiCommand("RemoveMemoryCallback", WrapVoidDomain(RemoveMemoryEvent), new List<ApiParameter> { DocParams.EventName }, "Removes the memory callback, looking it up by its given Name."));
 		}
 
 		private static class DocParams
 		{
-			public static ApiParameter Address = new ApiParameter("Address");
+			public static ApiParameter Address = new ApiParameter("Address", "address");
 			public static ApiParameter Value = new ApiParameter("Value");
 			public static ApiParameter Length = new ApiParameter("Length");
 			public static ApiParameter Domain = new ApiParameter("Domain", "string", true, true);
 			public static ApiParameter Data = new ApiParameter("Data", "bytes");
+			public static ApiParameter Callback = new ApiParameter("CallbackUrl", "url");
+			public static ApiParameter EventName = new ApiParameter("Name", "string", true, true);
 
 			public static List<ApiParameter> ReadParams = new List<ApiParameter>() { Domain, Address };
 			public static List<ApiParameter> WriteParams = new List<ApiParameter>() { Domain, Address, Value };
 			public static List<ApiParameter> ReadRange = new List<ApiParameter>() { Domain, Address, Length };
 			public static List<ApiParameter> WriteRange = new List<ApiParameter>() { Domain, Address, Data };
+			public static List<ApiParameter> EventParams = new List<ApiParameter>() { EventName, Address, Length, Callback };
 		}
 
 		private List<ApiCommand> constructedCommands = new List<ApiCommand>();
@@ -84,10 +96,10 @@ namespace BizHawk.Client.Common.Api.Public
 			}
 		}
 
-		private int GetAddr(IEnumerable<string> args, string domain) => ParseRequired(args, 0, hex => (int)ResolveAddress(hex, domain), "Address");
-		private int GetValue(IEnumerable<string> args) => ParseRequired(args, 1, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
-		private int GetLength(IEnumerable<string> args) => ParseRequired(args, 1, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
-		private byte[] GetData(IEnumerable<string> args) => ParseRequired(args, 1, HexStringToBytes, "Data");
+		private int GetAddr(IEnumerable<string> args, string domain, int offset = 0) => ParseRequired(args, offset, hex => (int)ResolveAddress(hex, domain), "Address");
+		private int GetValue(IEnumerable<string> args, int offset=1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
+		private int GetLength(IEnumerable<string> args, int offset=1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
+		private byte[] GetData(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, HexStringToBytes, "Data");
 
 		// Reads
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, int> innerCall, int bytesOut = 1) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain).ToString($"X{bytesOut * 2}");
@@ -107,14 +119,24 @@ namespace BizHawk.Client.Common.Api.Public
 		};
 		// Disassemble
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, string> innerCall) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain);
-
+		// MemoryEvent
+		private Func<IEnumerable<string>, string, string> WrapMemoryCall(MemoryCallbackType type, Func<MemoryCallbackType, string, uint, uint, string, string> innerCall)
+			=> (IEnumerable<string> args, string domain)
+			=> innerCall(type, string.Join("/", args.Skip(2)), (uint)GetAddr(args, CurrentDomain.Name), (uint)GetLength(args), domain);
 		// ReadRangeMultiple
 		private Func<IEnumerable<string>, string, string> WrapMultiMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => string.Join("",
 			//Enumerable.Zip(args, args.Skip(1), (addr, len) => new string[] { addr, len })
 			args.Select((val, i) => new { val, i }).GroupBy(v => v.i / 2).Select(g => g.Select(v => v.val))
 			.Select(a => BytesToHexString(innerCall(GetAddr(a, domain), GetLength(a), domain))));
 
+		private static Func<IEnumerable<string>, string, string> WrapVoidDomain(Action<string> innerCall) => (IEnumerable<string> args, string domain) =>
+		{
+			innerCall(domain ?? string.Join("/", args));
+			return null;
+		};
+
 		private void _UseMemoryDomain(string domain) => _currentMemoryDomain = Domain(domain);
+
 
 		private byte[] ReadRegion(int addr, int count, string domain = null)
 		{
@@ -159,6 +181,33 @@ namespace BizHawk.Client.Common.Api.Public
 			return $"{d}\t({byteLength} bytes)";
 		}
 
+		private string SetMemoryEvent(MemoryCallbackType type, string callback, uint address, uint bytes, string name)
+		{
+			try
+			{
+				if (
+					DebuggableCore != null
+					&& DebuggableCore.MemoryCallbacksAvailable()
+					&& (type != MemoryCallbackType.Execute || DebuggableCore.MemoryCallbacks.ExecuteCallbacksAvailable)
+					)
+				{
+					name = name ?? callback;
+					uint mask = 0;
+					for (var i = 0; i < bytes; i++)
+						mask |= (uint)(0xFF << (i * 8));
+
+					HttpClient client = new HttpClient();
+					DebuggableCore.MemoryCallbacks.Add(new MemoryCallback(type, name, () => client.GetAsync(callback).Result.ToString(), address, mask));
+					return name;
+				}
+			}
+			catch (NotImplementedException) { }
+			if (type == MemoryCallbackType.Execute)
+				throw new ApiError($"{Emulator.Attributes().CoreName} does not support memory execute callbacks.");
+			throw new ApiError($"{Emulator.Attributes().CoreName} does not support memory callbacks.");
+		}
+
+		private void RemoveMemoryEvent(string name) => DebuggableCore.MemoryCallbacks.Remove(DebuggableCore.MemoryCallbacks.FirstOrDefault(c => c.Name == name).Callback);
 
 		private MemoryDomain _currentMemoryDomain;
 
