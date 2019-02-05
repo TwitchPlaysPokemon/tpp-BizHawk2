@@ -26,9 +26,9 @@ namespace BizHawk.Client.Common.Api.Public.Providers
 		private static class Params
 		{
 			public static ApiParameter Buttons = new ApiParameter("Buttons", "string");
-			public static ApiParameter Frames = new ApiParameter("Frames");
-			public static ApiParameter HeldFrames = new ApiParameter("HeldFrames", optional: true);
-			public static ApiParameter SleepFrames = new ApiParameter("SleepFrames", optional: true);
+			public static ApiParameter Frames = new ApiParameter("Frames", "int(dec)");
+			public static ApiParameter HeldFrames = new ApiParameter("HeldFrames", "int(dec)", optional: true);
+			public static ApiParameter SleepFrames = new ApiParameter("SleepFrames", "int(dec)", optional: true);
 			public static ApiParameter Callback = new ApiParameter("CallbackUrl", "url", true);
 		}
 
