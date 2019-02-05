@@ -97,8 +97,8 @@ namespace BizHawk.Client.Common.Api.Public
 		}
 
 		private int GetAddr(IEnumerable<string> args, string domain, int offset = 0) => ParseRequired(args, offset, hex => (int)ResolveAddress(hex, domain), "Address");
-		private int GetValue(IEnumerable<string> args, int offset=1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
-		private int GetLength(IEnumerable<string> args, int offset=1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
+		private int GetValue(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
+		private int GetLength(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
 		private byte[] GetData(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, HexStringToBytes, "Data");
 
 		// Reads
@@ -197,7 +197,14 @@ namespace BizHawk.Client.Common.Api.Public
 						mask |= (uint)(0xFF << (i * 8));
 
 					HttpClient client = new HttpClient();
-					DebuggableCore.MemoryCallbacks.Add(new MemoryCallback(type, name, () => client.GetAsync(callback).Result.ToString(), address, mask));
+					DebuggableCore.MemoryCallbacks.Add(new MemoryCallback(type, name, () =>
+					{
+						try
+						{
+							client.GetAsync(callback).Result.ToString();
+						}
+						catch { }
+					}, address, mask));
 					return name;
 				}
 			}
