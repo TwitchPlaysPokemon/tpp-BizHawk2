@@ -29,15 +29,17 @@ namespace BizHawk.Client.Common
 		"post",
 		"synchronously sends given data to the given url via HTTP POST and returns the response"
 		)]
-		public object Post(string url, string data)
+		public string Post(string url, string data, out int status)
 		{
 			try
 			{
-				return new { response = HTTPClient.PostSync(url, data), status = 200 };
+				status = 200;
+				return HTTPClient.PostSync(url, data);
 			}
 			catch (HTTPClient.HttpException e)
 			{
-				return new { response = e.Message, status = e.StatusCode };
+				status = e.StatusCode;
+				return e.Message;
 			}
 		}
 
@@ -54,15 +56,17 @@ namespace BizHawk.Client.Common
 			"get",
 			"synchronously gets data from the given url via HTTP GET"
 		)]
-		public object Get(string url)
+		public string Get(string url, out int status)
 		{
 			try
 			{
-				return new { response = HTTPClient.GetSync(url), status = 200 };
+				status = 200;
+				return HTTPClient.GetSync(url);
 			}
 			catch (HTTPClient.HttpException e)
 			{
-				return new { response = e.Message, status = e.StatusCode };
+				status = e.StatusCode;
+				return e.Message;
 			}
 		}
 
@@ -82,12 +86,12 @@ namespace BizHawk.Client.Common
 			"request",
 			"calls get or post based on parameters"
 		)]
-		public object Request(string url, string data = null)
+		public object Request(out int status, string url, string data = null)
 		{
 			if (data == null)
-				return Get(url);
+				return Get(url, out status);
 			else
-				return Post(url, data);
+				return Post(url, data, out status);
 		}
 
 		[LuaMethod(
