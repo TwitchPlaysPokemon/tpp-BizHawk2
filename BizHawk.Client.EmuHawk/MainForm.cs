@@ -1155,11 +1155,13 @@ namespace BizHawk.Client.EmuHawk
 		public void Unthrottle()
 		{
 			_unthrottled = true;
+			SuppressLua = true;
 		}
 
 		public void Throttle()
 		{
 			_unthrottled = false;
+			SuppressLua = false;
 		}
 
 		private void ThrottleMessage()
