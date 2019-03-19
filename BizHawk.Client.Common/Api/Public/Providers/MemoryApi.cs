@@ -102,9 +102,9 @@ namespace BizHawk.Client.Common.Api.Public
 			}
 		}
 
-		private int GetAddr(IEnumerable<string> args, string domain, int offset = 0) => ParseRequired(args, offset, hex => (int)ResolveAddress(hex, domain), "Address");
-		private int GetValue(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Value");
-		private int GetLength(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, hex => int.Parse(hex, System.Globalization.NumberStyles.HexNumber), "Length");
+		private int GetAddr(IEnumerable<string> args, string domain, int offset = 0) => ParseRequired(args, offset, hex => (int)ResolveAddress(hex?.ToUpper(), domain), "Address");
+		private int GetValue(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, hex => int.Parse(hex?.ToUpper(), System.Globalization.NumberStyles.HexNumber), "Value");
+		private int GetLength(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, hex => int.Parse(hex?.ToUpper(), System.Globalization.NumberStyles.HexNumber), "Length");
 		private byte[] GetData(IEnumerable<string> args, int offset = 1) => ParseRequired(args, offset, HexStringToBytes, "Data");
 
 		// Reads

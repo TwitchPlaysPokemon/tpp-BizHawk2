@@ -20,6 +20,7 @@ namespace BizHawk.Client.Common.Api.Public
 		{
 			if (hex == null)
 				return null;
+			hex = hex.ToUpper();
 			var bytes = new List<byte>();
 			for (int i = 0; i < hex.Length; i += 2)
 			{
