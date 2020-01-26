@@ -7,13 +7,8 @@ namespace BizHawk.Client.Common
 {
 	public class LuaFunctionList : List<NamedLuaFunction>
 	{
-		public NamedLuaFunction this[string guid]
-		{
-			get
-			{
-				return this.FirstOrDefault(nlf => nlf.Guid.ToString() == guid);
-			}
-		}
+		public NamedLuaFunction this[string guid] => 
+			this.FirstOrDefault(nlf => nlf.Guid.ToString() == guid);
 
 		public new bool Remove(NamedLuaFunction function)
 		{
@@ -24,13 +19,25 @@ namespace BizHawk.Client.Common
 
 			if (Global.Emulator.MemoryCallbacksAvailable())
 			{
-				Global.Emulator.AsDebuggable().MemoryCallbacks.Remove(function.Callback);
+				Global.Emulator.AsDebuggable().MemoryCallbacks.Remove(function.MemCallback);
 			}
 
 			return base.Remove(function);
 		}
 
-		public void ClearAll()
+		public void RemoveForFile(LuaFile file)
+		{
+			var functionsToRemove = this
+				.ForFile(file)
+				.ToList();
+
+			foreach (var function in functionsToRemove)
+			{
+				Remove(function);
+			}
+		}
+
+		public new void Clear()
 		{
 			if (Global.Emulator.InputCallbacksAvailable())
 			{
@@ -40,10 +47,25 @@ namespace BizHawk.Client.Common
 			if (Global.Emulator.MemoryCallbacksAvailable())
 			{
 				var memoryCallbacks = Global.Emulator.AsDebuggable().MemoryCallbacks;
-				memoryCallbacks.RemoveAll(this.Select(w => w.Callback));
+				memoryCallbacks.RemoveAll(this.Select(w => w.MemCallback));
 			}
 
-			Clear();
+			base.Clear();
+		}
+	}
+
+	public static class LuaFunctionListExtensions
+	{
+		public static IEnumerable<NamedLuaFunction> ForFile(this IEnumerable<NamedLuaFunction> list, LuaFile luaFile)
+		{
+			return list
+				.Where(l => l.LuaFile.Path == luaFile.Path
+					|| l.LuaFile.Thread == luaFile.Thread);
+		}
+
+		public static IEnumerable<NamedLuaFunction> ForEvent(this IEnumerable<NamedLuaFunction> list, string eventName)
+		{
+			return list.Where(l => l.Event == eventName);
 		}
 	}
 }

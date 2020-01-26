@@ -9,8 +9,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.SNES
 	{
 		public IDictionary<string, RegisterValue> GetCpuFlagsAndRegisters()
 		{
-			LibsnesApi.CPURegs regs;
-			Api.QUERY_peek_cpu_regs(out regs);
+			Api.QUERY_peek_cpu_regs(out var regs);
 
 			bool fn = (regs.p & 0x80) != 0;
 			bool fv = (regs.p & 0x40) != 0;
@@ -46,6 +45,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.SNES
 				["Flag I"] = fi,
 				["Flag Z"] = fz,
 				["Flag C"] = fc,
+				["V"] = regs.v,
+				["H"] = regs.h
 			};
 		}
 
@@ -55,7 +56,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.SNES
 			throw new NotImplementedException();
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem();
+		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem(new[] { "System Bus" });
 
 		public bool CanStep(StepType type)
 		{
@@ -69,9 +70,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.SNES
 		}
 
 		[FeatureNotImplemented]
-		public int TotalExecutedCycles
-		{
-			get { throw new NotImplementedException(); }
-		}
+		public long TotalExecutedCycles => throw new NotImplementedException();
 	}
 }

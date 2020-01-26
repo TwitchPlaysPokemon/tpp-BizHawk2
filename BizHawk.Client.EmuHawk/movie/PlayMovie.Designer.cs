@@ -29,7 +29,6 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PlayMovie));
 			this.Cancel = new System.Windows.Forms.Button();
 			this.OK = new System.Windows.Forms.Button();
 			this.BrowseMovies = new System.Windows.Forms.Button();
@@ -49,7 +48,7 @@
 			this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.StopOnFrameCheckbox = new System.Windows.Forms.CheckBox();
 			this.StopOnFrameTextBox = new BizHawk.Client.EmuHawk.WatchValueBox();
-			this.MovieView = new BizHawk.Client.EmuHawk.VirtualListView();
+			this.MovieView = new System.Windows.Forms.ListView();
 			this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -128,7 +127,8 @@
 			// 
 			// groupBox1
 			// 
-			this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
 			this.groupBox1.Controls.Add(this.SubtitlesBtn);
 			this.groupBox1.Controls.Add(this.CommentsBtn);
 			this.groupBox1.Controls.Add(this.DetailsView);
@@ -174,11 +174,11 @@
 			// 
 			// ReadOnlyCheckBox
 			// 
-			this.ReadOnlyCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.ReadOnlyCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.ReadOnlyCheckBox.AutoSize = true;
 			this.ReadOnlyCheckBox.Checked = true;
 			this.ReadOnlyCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.ReadOnlyCheckBox.Location = new System.Drawing.Point(503, 367);
+			this.ReadOnlyCheckBox.Location = new System.Drawing.Point(405, 367);
 			this.ReadOnlyCheckBox.Name = "ReadOnlyCheckBox";
 			this.ReadOnlyCheckBox.Size = new System.Drawing.Size(74, 17);
 			this.ReadOnlyCheckBox.TabIndex = 45;
@@ -240,7 +240,7 @@
 			// 
 			this.StopOnFrameCheckbox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.StopOnFrameCheckbox.AutoSize = true;
-			this.StopOnFrameCheckbox.Location = new System.Drawing.Point(342, 357);
+			this.StopOnFrameCheckbox.Location = new System.Drawing.Point(244, 357);
 			this.StopOnFrameCheckbox.Name = "StopOnFrameCheckbox";
 			this.StopOnFrameCheckbox.Size = new System.Drawing.Size(95, 17);
 			this.StopOnFrameCheckbox.TabIndex = 57;
@@ -253,7 +253,7 @@
 			this.StopOnFrameTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.StopOnFrameTextBox.ByteSize = BizHawk.Client.Common.WatchSize.DWord;
 			this.StopOnFrameTextBox.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
-			this.StopOnFrameTextBox.Location = new System.Drawing.Point(438, 355);
+			this.StopOnFrameTextBox.Location = new System.Drawing.Point(340, 355);
 			this.StopOnFrameTextBox.MaxLength = 10;
 			this.StopOnFrameTextBox.Name = "StopOnFrameTextBox";
 			this.StopOnFrameTextBox.Nullable = true;
@@ -265,9 +265,9 @@
 			// MovieView
 			// 
 			this.MovieView.AllowDrop = true;
-			this.MovieView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+			this.MovieView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.MovieView.BlazingFast = false;
 			this.MovieView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader1,
             this.columnHeader2,
@@ -277,16 +277,13 @@
 			this.MovieView.FullRowSelect = true;
 			this.MovieView.GridLines = true;
 			this.MovieView.HideSelection = false;
-			this.MovieView.ItemCount = 0;
+			this.MovieView.VirtualListSize = 0;
 			this.MovieView.Location = new System.Drawing.Point(12, 28);
 			this.MovieView.MultiSelect = false;
 			this.MovieView.Name = "MovieView";
-			this.MovieView.SelectAllInProgress = false;
-			this.MovieView.selectedItem = -1;
 			this.MovieView.Size = new System.Drawing.Size(480, 322);
 			this.MovieView.TabIndex = 5;
 			this.MovieView.UseCompatibleStateImageBehavior = false;
-			this.MovieView.UseCustomBackground = true;
 			this.MovieView.View = System.Windows.Forms.View.Details;
 			this.MovieView.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.MovieView_ColumnClick);
 			this.MovieView.SelectedIndexChanged += new System.EventHandler(this.MovieView_SelectedIndexChanged);
@@ -319,7 +316,7 @@
 			// 
 			this.LastFrameCheckbox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.LastFrameCheckbox.AutoSize = true;
-			this.LastFrameCheckbox.Location = new System.Drawing.Point(342, 376);
+			this.LastFrameCheckbox.Location = new System.Drawing.Point(244, 376);
 			this.LastFrameCheckbox.Name = "LastFrameCheckbox";
 			this.LastFrameCheckbox.Size = new System.Drawing.Size(75, 17);
 			this.LastFrameCheckbox.TabIndex = 59;
@@ -331,7 +328,7 @@
 			// 
 			this.TurboCheckbox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.TurboCheckbox.AutoSize = true;
-			this.TurboCheckbox.Location = new System.Drawing.Point(438, 376);
+			this.TurboCheckbox.Location = new System.Drawing.Point(340, 376);
 			this.TurboCheckbox.Name = "TurboCheckbox";
 			this.TurboCheckbox.Size = new System.Drawing.Size(54, 17);
 			this.TurboCheckbox.TabIndex = 60;
@@ -359,7 +356,7 @@
 			this.Controls.Add(this.BrowseMovies);
 			this.Controls.Add(this.OK);
 			this.Controls.Add(this.Cancel);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+			this.Icon = global::BizHawk.Client.EmuHawk.Properties.Resources.TAStudio_MultiSize;
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.MinimumSize = new System.Drawing.Size(547, 228);
@@ -379,7 +376,7 @@
 		private System.Windows.Forms.Button Cancel;
 		private System.Windows.Forms.Button OK;
 		private System.Windows.Forms.Button BrowseMovies;
-		private VirtualListView MovieView;
+		private  System.Windows.Forms.ListView MovieView;
 		private System.Windows.Forms.ColumnHeader columnHeader1;
 		private System.Windows.Forms.ColumnHeader columnHeader2;
 		private System.Windows.Forms.ColumnHeader columnHeader3;

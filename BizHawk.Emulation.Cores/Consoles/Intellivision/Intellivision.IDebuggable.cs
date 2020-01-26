@@ -82,7 +82,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			}
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem();
+		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem(new[] { "System Bus" });
 
 		public bool CanStep(StepType type)
 		{
@@ -95,6 +95,6 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			throw new NotImplementedException();
 		}
 
-		public int TotalExecutedCycles => _cpu.TotalExecutedCycles;
+		public long TotalExecutedCycles => _cpu.TotalExecutedCycles;
 	}
 }

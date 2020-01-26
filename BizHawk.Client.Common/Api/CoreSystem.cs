@@ -1,4 +1,4 @@
-﻿namespace BizHawk.Client.ApiHawk
+﻿namespace BizHawk.Client.Common
 {
 	/// <summary>
 	/// Enumeration of each system emulated by BizHawk
@@ -29,6 +29,16 @@
 		WonderSwan,
 		Libretro,
 		VirtualBoy,
-		NeoGeoPocket
+		Vectrex,
+		NeoGeoPocket,
+		ZXSpectrum,
+		AmstradCPC,
+		GGL,
+		GB3x,
+		GB4x,
+		ChannelF,
+		Odyssey2,
+		MAME,
+		MSX
 	}
 }

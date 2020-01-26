@@ -15,6 +15,12 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				http://frodo.cebix.net/
 		*/
 
+
+		// operation of the interrupt at the serial data port occurs in 2 instances:
+		// 1. Being in output mode and having a complete transfer as defined by clocking of timer A
+		// 2. Being in input mode and receiving 8 clocks from the /CNT pin
+		// This is TODO
+
 		private enum TimerState
 		{
 			Stop = 0,
@@ -27,6 +33,8 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 		}
 
 		public Func<bool> ReadFlag = () => true;
+		public Func<bool> ReadCnt = () => true;
+		public Func<bool> ReadSp = () => true; 
 		public bool DelayedInterrupts = true;
 
 		private int _pra;
@@ -73,6 +81,9 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 		private bool _flagLatch;
 		private bool _flagInput;
 		private bool _taUnderflow;
+		private bool _lastCnt;
+		private bool _thisCnt;
+		private bool _tbCntTaCnt;
 
 		private readonly IPort _port;
 		private int _todlo;
@@ -92,9 +103,9 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 			_port = new JoystickKeyboardPort(joysticks, keyboard);
 		}
 
-		public Cia(int todNum, int todDen, Func<int> readIec) : this(todNum, todDen)
+		public Cia(int todNum, int todDen, Func<int> readIec, Func<int> readUserPort) : this(todNum, todDen)
 		{
-			_port = new IecPort(readIec);
+			_port = new IecPort(readIec, readUserPort);
 		}
 
 		public void HardReset()
@@ -130,29 +141,24 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 			_tbIrqNextCycle = false;
 			_taState = TimerState.Stop;
 			_tbState = TimerState.Stop;
+			_lastCnt = true;
 		}
 
-		private void CheckIrqs()
+		public void ExecutePhase()
 		{
+			_thisCnt = ReadCnt();
+			_taUnderflow = false;
+
 			if (_taIrqNextCycle)
 			{
 				_taIrqNextCycle = false;
 				TriggerInterrupt(1);
 			}
-
+			
 			if (_tbIrqNextCycle)
 			{
 				_tbIrqNextCycle = false;
 				TriggerInterrupt(2);
-			}
-		}
-
-		public void ExecutePhase()
-		{
-			_taUnderflow = false;
-			if (DelayedInterrupts)
-			{
-				CheckIrqs();
 			}
 
 			if (_taPrb6NegativeNextCycle)
@@ -166,6 +172,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				_prb &= 0x7F;
 				_tbPrb7NegativeNextCycle = false;
 			}
+
 
 			switch (_taState)
 			{
@@ -197,7 +204,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					{
 						_ta = _latcha;
 					}
-
 					Ta_Idle();
 					break;
 				case TimerState.Count:
@@ -238,7 +244,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					{
 						_tb = _latchb;
 					}
-
 					Tb_Idle();
 					break;
 				case TimerState.Count:
@@ -265,28 +270,19 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 			{
 				TriggerInterrupt(16);
 			}
-
 			_flagLatch = _flagInput;
 
-			if (!DelayedInterrupts)
-			{
-				CheckIrqs();
-			}
-
 			if ((_cra & 0x02) != 0)
-			{
 				_ddra |= 0x40;
-			}
-
 			if ((_crb & 0x02) != 0)
-			{
 				_ddrb |= 0x80;
-			}
+
+			_lastCnt = _thisCnt;
 		}
 
 		private void Ta_Count()
 		{
-			if (_taCntPhi2)
+			if (_taCntPhi2 || (_taCntCnt && !_lastCnt && _thisCnt))
 			{
 				if (_ta <= 0 || --_ta == 0)
 				{
@@ -294,18 +290,21 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					{
 						Ta_Interrupt();
 					}
-
 					_taUnderflow = true;
 				}
 			}
-
 			Ta_Idle();
 		}
 
 		private void Ta_Interrupt()
 		{
 			_ta = _latcha;
-			_taIrqNextCycle = true;
+
+			if (DelayedInterrupts)
+				_taIrqNextCycle = true;
+			else
+				TriggerInterrupt(1);
+
 			_icr |= 1;
 
 			if ((_cra & 0x08) != 0)
@@ -330,7 +329,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				{
 					_prb ^= 0x40;
 				}
-
 				_ddrb |= 0x40;
 			}
 		}
@@ -356,7 +354,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 								_taState = TimerState.LoadThenStop;
 							}
 						}
-
 						break;
 					case TimerState.Count:
 						if ((_newCra & 0x01) != 0)
@@ -372,7 +369,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 								? TimerState.LoadThenStop
 								: TimerState.CountThenStop;
 						}
-
 						break;
 					case TimerState.LoadThenCount:
 					case TimerState.WaitThenCount:
@@ -392,10 +388,8 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 						{
 							_taState = TimerState.Stop;
 						}
-
 						break;
 				}
-
 				_cra = _newCra & 0xEF;
 				_hasNewCra = false;
 			}
@@ -403,7 +397,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 
 		private void Tb_Count()
 		{
-			if (_tbCntPhi2 || (_tbCntTa && _taUnderflow))
+			if (_tbCntPhi2 || (_tbCntTa && _taUnderflow) || (_tbCntTaCnt && _taUnderflow && _thisCnt) || (_tbCntCnt && !_lastCnt && _thisCnt))
 			{
 				if (_tb <= 0 || --_tb == 0)
 				{
@@ -413,14 +407,17 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					}
 				}
 			}
-
 			Tb_Idle();
 		}
 
 		private void Tb_Interrupt()
 		{
 			_tb = _latchb;
-			_tbIrqNextCycle = true;
+			if (DelayedInterrupts)
+				_tbIrqNextCycle = true;
+			else
+				TriggerInterrupt(2);
+
 			_icr |= 2;
 
 			if ((_crb & 0x08) != 0)
@@ -469,7 +466,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 								_tbState = TimerState.LoadThenStop;
 							}
 						}
-
 						break;
 					case TimerState.Count:
 						if ((_newCrb & 0x01) != 0)
@@ -485,7 +481,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 								? TimerState.LoadThenStop
 								: TimerState.CountThenStop;
 						}
-
 						break;
 					case TimerState.LoadThenCount:
 					case TimerState.WaitThenCount:
@@ -505,10 +500,8 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 						{
 							_tbState = TimerState.Stop;
 						}
-
 						break;
 				}
-
 				_crb = _newCrb & 0xEF;
 				_hasNewCrb = false;
 			}
@@ -517,61 +510,59 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 		private void TriggerInterrupt(int bit)
 		{
 			_icr |= bit;
-			if ((_intMask & bit) == 0)
-			{
-				return;
-			}
-
+			if ((_intMask & bit) == 0) return;
 			_icr |= 0x80;
 		}
 
 		public void SyncState(Serializer ser)
 		{
-			ser.Sync("DelayedInterrupts", ref DelayedInterrupts);
-			ser.Sync("_pra", ref _pra);
-			ser.Sync("_prb", ref _prb);
-			ser.Sync("_ddra", ref _ddra);
-			ser.Sync("_ddrb", ref _ddrb);
-			ser.Sync("_ta", ref _ta);
-			ser.Sync("_tb", ref _tb);
-			ser.Sync("_latcha", ref _latcha);
-			ser.Sync("_latchb", ref _latchb);
-			ser.Sync("_tod10Ths", ref _tod10Ths);
-			ser.Sync("_todSec", ref _todSec);
-			ser.Sync("_todMin", ref _todMin);
-			ser.Sync("_todHr", ref _todHr);
-			ser.Sync("_latch10Ths", ref _latch10Ths);
-			ser.Sync("_latchSec", ref _latchSec);
-			ser.Sync("_latchMin", ref _latchMin);
-			ser.Sync("_latchHr", ref _latchHr);
-			ser.Sync("_alm10Ths", ref _alm10Ths);
-			ser.Sync("_almSec", ref _almSec);
-			ser.Sync("_almMin", ref _almMin);
-			ser.Sync("_almHr", ref _almHr);
-			ser.Sync("_sdr", ref _sdr);
-			ser.Sync("_icr", ref _icr);
-			ser.Sync("_cra", ref _cra);
-			ser.Sync("_crb", ref _crb);
-			ser.Sync("_intMask", ref _intMask);
-			ser.Sync("_todLatch", ref _todLatch);
-			ser.Sync("_taCntPhi2", ref _taCntPhi2);
-			ser.Sync("_taCntCnt", ref _taCntCnt);
-			ser.Sync("_tbCntPhi2", ref _tbCntPhi2);
-			ser.Sync("_tbCntTa", ref _tbCntTa);
-			ser.Sync("_tbCntCnt", ref _tbCntCnt);
-			ser.Sync("_taIrqNextCycle", ref _taIrqNextCycle);
-			ser.Sync("_taPrb6NegativeNextCycle", ref _taPrb6NegativeNextCycle);
-			ser.Sync("_tbIrqNextCycle", ref _tbIrqNextCycle);
-			ser.Sync("_tbPrb7NegativeNextCycle", ref _tbPrb7NegativeNextCycle);
-			ser.Sync("_hasNewCra", ref _hasNewCra);
-			ser.Sync("_hasNewCrb", ref _hasNewCrb);
-			ser.SyncEnum("_taState", ref _taState);
-			ser.SyncEnum("_tbState", ref _tbState);
-			ser.Sync("_newCra", ref _newCra);
-			ser.Sync("_newCrb", ref _newCrb);
-			ser.Sync("_flagLatch", ref _flagLatch);
+			ser.Sync(nameof(DelayedInterrupts), ref DelayedInterrupts);
+			ser.Sync(nameof(_pra), ref _pra);
+			ser.Sync(nameof(_prb), ref _prb);
+			ser.Sync(nameof(_ddra), ref _ddra);
+			ser.Sync(nameof(_ddrb), ref _ddrb);
+			ser.Sync(nameof(_ta), ref _ta);
+			ser.Sync(nameof(_tb), ref _tb);
+			ser.Sync(nameof(_latcha), ref _latcha);
+			ser.Sync(nameof(_latchb), ref _latchb);
+			ser.Sync(nameof(_tod10Ths), ref _tod10Ths);
+			ser.Sync(nameof(_todSec), ref _todSec);
+			ser.Sync(nameof(_todMin), ref _todMin);
+			ser.Sync(nameof(_todHr), ref _todHr);
+			ser.Sync(nameof(_latch10Ths), ref _latch10Ths);
+			ser.Sync(nameof(_latchSec), ref _latchSec);
+			ser.Sync(nameof(_latchMin), ref _latchMin);
+			ser.Sync(nameof(_latchHr), ref _latchHr);
+			ser.Sync(nameof(_alm10Ths), ref _alm10Ths);
+			ser.Sync(nameof(_almSec), ref _almSec);
+			ser.Sync(nameof(_almMin), ref _almMin);
+			ser.Sync(nameof(_almHr), ref _almHr);
+			ser.Sync(nameof(_sdr), ref _sdr);
+			ser.Sync(nameof(_icr), ref _icr);
+			ser.Sync(nameof(_cra), ref _cra);
+			ser.Sync(nameof(_crb), ref _crb);
+			ser.Sync(nameof(_intMask), ref _intMask);
+			ser.Sync(nameof(_todLatch), ref _todLatch);
+			ser.Sync(nameof(_taCntPhi2), ref _taCntPhi2);
+			ser.Sync(nameof(_taCntCnt), ref _taCntCnt);
+			ser.Sync(nameof(_tbCntPhi2), ref _tbCntPhi2);
+			ser.Sync(nameof(_tbCntTa), ref _tbCntTa);
+			ser.Sync(nameof(_tbCntCnt), ref _tbCntCnt);
+			ser.Sync(nameof(_taIrqNextCycle), ref _taIrqNextCycle);
+			ser.Sync(nameof(_taPrb6NegativeNextCycle), ref _taPrb6NegativeNextCycle);
+			ser.Sync(nameof(_tbIrqNextCycle), ref _tbIrqNextCycle);
+			ser.Sync(nameof(_tbPrb7NegativeNextCycle), ref _tbPrb7NegativeNextCycle);
+			ser.Sync(nameof(_hasNewCra), ref _hasNewCra);
+			ser.Sync(nameof(_hasNewCrb), ref _hasNewCrb);
+			ser.SyncEnum(nameof(_taState), ref _taState);
+			ser.SyncEnum(nameof(_tbState), ref _tbState);
+			ser.Sync(nameof(_newCra), ref _newCra);
+			ser.Sync(nameof(_newCrb), ref _newCrb);
+			ser.Sync(nameof(_flagLatch), ref _flagLatch);
 
-			ser.Sync("_todCounter", ref _todCounter);
+			ser.Sync(nameof(_todCounter), ref _todCounter);
+			ser.Sync(nameof(_lastCnt), ref _lastCnt);
+			ser.Sync(nameof(_thisCnt), ref _thisCnt);
 		}
 	}
 }

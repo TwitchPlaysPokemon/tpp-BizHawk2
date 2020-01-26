@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			this.components = new System.ComponentModel.Container();
 			this.PlaybackGroupBox = new System.Windows.Forms.GroupBox();
 			this.RecordingModeCheckbox = new System.Windows.Forms.CheckBox();
 			this.AutoRestoreCheckbox = new System.Windows.Forms.CheckBox();
@@ -38,14 +39,12 @@
 			this.PauseButton = new System.Windows.Forms.Button();
 			this.RewindButton = new BizHawk.Client.EmuHawk.RepeatButton();
 			this.PreviousMarkerButton = new System.Windows.Forms.Button();
+			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
 			this.PlaybackGroupBox.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// PlaybackGroupBox
 			// 
-			this.PlaybackGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
 			this.PlaybackGroupBox.Controls.Add(this.RecordingModeCheckbox);
 			this.PlaybackGroupBox.Controls.Add(this.AutoRestoreCheckbox);
 			this.PlaybackGroupBox.Controls.Add(this.TurboSeekCheckbox);
@@ -55,9 +54,10 @@
 			this.PlaybackGroupBox.Controls.Add(this.PauseButton);
 			this.PlaybackGroupBox.Controls.Add(this.RewindButton);
 			this.PlaybackGroupBox.Controls.Add(this.PreviousMarkerButton);
-			this.PlaybackGroupBox.Location = new System.Drawing.Point(3, 3);
+			this.PlaybackGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.PlaybackGroupBox.Location = new System.Drawing.Point(0, 0);
 			this.PlaybackGroupBox.Name = "PlaybackGroupBox";
-			this.PlaybackGroupBox.Size = new System.Drawing.Size(252, 104);
+			this.PlaybackGroupBox.Size = new System.Drawing.Size(198, 104);
 			this.PlaybackGroupBox.TabIndex = 0;
 			this.PlaybackGroupBox.TabStop = false;
 			this.PlaybackGroupBox.Text = "Playback";
@@ -125,6 +125,7 @@
 			this.FrameAdvanceButton.Size = new System.Drawing.Size(38, 23);
 			this.FrameAdvanceButton.TabIndex = 3;
 			this.FrameAdvanceButton.Text = ">";
+			this.toolTip1.SetToolTip(this.FrameAdvanceButton, "Right Mouse Button + Wheel Down");
 			this.FrameAdvanceButton.UseVisualStyleBackColor = true;
 			this.FrameAdvanceButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.FrameAdvanceButton_MouseDown);
 			this.FrameAdvanceButton.MouseLeave += new System.EventHandler(this.FrameAdvanceButton_MouseLeave);
@@ -137,6 +138,7 @@
 			this.PauseButton.Size = new System.Drawing.Size(38, 23);
 			this.PauseButton.TabIndex = 2;
 			this.PauseButton.Text = "| |";
+			this.toolTip1.SetToolTip(this.PauseButton, "Middle Mouse Button");
 			this.PauseButton.UseVisualStyleBackColor = true;
 			this.PauseButton.Click += new System.EventHandler(this.PauseButton_Click);
 			// 
@@ -149,6 +151,7 @@
 			this.RewindButton.Size = new System.Drawing.Size(38, 23);
 			this.RewindButton.TabIndex = 1;
 			this.RewindButton.Text = "<";
+			this.toolTip1.SetToolTip(this.RewindButton, "Right Mouse Button + Wheel Up");
 			this.RewindButton.UseVisualStyleBackColor = true;
 			this.RewindButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.RewindButton_MouseDown);
 			this.RewindButton.MouseLeave += new System.EventHandler(this.RewindButton_MouseLeave);
@@ -169,7 +172,7 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
 			this.Controls.Add(this.PlaybackGroupBox);
 			this.Name = "PlaybackBox";
-			this.Size = new System.Drawing.Size(258, 110);
+			this.Size = new System.Drawing.Size(198, 104);
 			this.PlaybackGroupBox.ResumeLayout(false);
 			this.PlaybackGroupBox.PerformLayout();
 			this.ResumeLayout(false);
@@ -188,5 +191,6 @@
 		private System.Windows.Forms.CheckBox TurboSeekCheckbox;
 		private System.Windows.Forms.CheckBox FollowCursorCheckbox;
 		private System.Windows.Forms.CheckBox RecordingModeCheckbox;
+		private System.Windows.Forms.ToolTip toolTip1;
 	}
 }

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 using BizHawk.Client.Common;
+using BizHawk.Common;
 
 //this throttle is nitsuja's fine-tuned techniques from desmume
 
@@ -34,7 +34,7 @@ namespace BizHawk.Client.EmuHawk
 			//notably, if we're frame-advancing, we should be paused.
 			if (signal_paused && !signal_continuousFrameAdvancing)
 			{
-				//Console.WriteLine("THE THING: {0} {1}", signal_paused ,signal_continuousFrameAdvancing);
+				//Console.WriteLine($"THE THING: {signal_paused} {signal_continuousFrameAdvancing}");
 				skipNextFrame = false;
 				framesSkipped = 0;
 				framesToSkip = 0;
@@ -44,7 +44,8 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			//heres some ideas for how to begin cleaning this up
+#if false
+			//here's some ideas for how to begin cleaning this up
 			////at this point, its assumed that we're running.
 			////this could be a free run, an unthrottled run, or a 'continuous frame advance' (aka continuous) run
 			////free run: affected by frameskips and throttles
@@ -52,16 +53,15 @@ namespace BizHawk.Client.EmuHawk
 			////continuous run: affected by frameskips and throttles
 			////so continuous and free are the same?
 
-			//bool continuous_run = signal_continuousFrameAdvancing;
-			//bool unthrottled_run = signal_unthrottle;
-			//bool free_run = !continuous_run && !unthrottled_run;
+			bool continuous_run = signal_continuousFrameAdvancing;
+			bool unthrottled_run = signal_unthrottle;
+			bool free_run = !continuous_run && !unthrottled_run;
 
-			//bool do_throttle, do_skip;
-			//if (continuous_run || free_run)
-			//  do_throttle = do_skip = true;
-			//else if (unthrottled_run)
-			//  do_skip = true;
-			//else throw new InvalidOperationException();
+			bool do_throttle, do_skip;
+			if (continuous_run || free_run) do_throttle = do_skip = true;
+			else if (unthrottled_run) do_skip = true;
+			else throw new InvalidOperationException();
+#endif
 
 			int skipRate = (forceFrameSkip < 0) ? Global.Config.FrameSkip : forceFrameSkip;
 			int ffSkipRate = (forceFrameSkip < 0) ? 3 : forceFrameSkip;
@@ -137,10 +137,9 @@ namespace BizHawk.Client.EmuHawk
 				return (ulong)Environment.TickCount;
 		}
 
-#if WINDOWS
-		[DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")]
-		static extern uint timeBeginPeriod(uint uMilliseconds);
-#endif
+		static readonly Func<uint, uint> TimeBeginPeriod = OSTailoredCode.IsUnixHost
+			? u => u
+			: (Func<uint, uint>) Win32Imports.timeBeginPeriod;
 
 		static readonly int tmethod;
 		static readonly ulong afsfreq;
@@ -148,9 +147,7 @@ namespace BizHawk.Client.EmuHawk
 
 		static Throttle()
 		{
-#if WINDOWS
-			timeBeginPeriod(1);
-#endif
+			TimeBeginPeriod(1);
 			if (Stopwatch.IsHighResolution)
 			{
 				afsfreq = (ulong)Stopwatch.Frequency;
@@ -176,12 +173,12 @@ namespace BizHawk.Client.EmuHawk
 		int pct = -1;
 		public void SetSpeedPercent(int percent)
 		{
-			//Console.WriteLine("throttle set percent " + percent);
+			//Console.WriteLine($"throttle set percent {percent}");
 			if (pct == percent) return;
 			pct = percent;
 			float fraction = percent / 100.0f;
 			desiredfps = (ulong)(core_desiredfps * fraction);
-			//Console.WriteLine("throttle set desiredfps " + desiredfps);
+			//Console.WriteLine($"throttle set desiredfps {desiredfps}");
 			desiredspf = 65536.0f / desiredfps;
 			AutoFrameSkip_IgnorePreviousDelay();
 		}
@@ -232,11 +229,11 @@ namespace BizHawk.Client.EmuHawk
 
 
 			// reset way-out-of-range values
-			if (diff > 1)
-				diff = 1;
-			if (error > 1 || error < -1)
-				error = 0;
-			if (diffUnthrottled > 1)
+			if (diff > 1.0f)
+				diff = 1.0f;
+			if (!(-1.0f).RangeTo(1.0f).Contains(error))
+				error = 0.0f;
+			if (diffUnthrottled > 1.0f)
 				diffUnthrottled = desiredspf;
 
 			float derivative = (error - lastError) / diff;
@@ -340,18 +337,23 @@ namespace BizHawk.Client.EmuHawk
 				int sleepTime = (int)((timePerFrame - elapsedTime) * 1000 / afsfreq);
 				if (sleepTime >= 2 || paused)
 				{
-#if WINDOWS
-					// Assuming a timer period of 1 ms (i.e. timeBeginPeriod(1)): The actual sleep time
-					// on Windows XP is generally within a half millisecond either way of the requested
-					// time. The actual sleep time on Windows 8 is generally between the requested time
-					// and up to a millisecond over. So we'll subtract 1 ms from the time to avoid
-					// sleeping longer than desired.
-					sleepTime -= 1;
-#else
-					// The actual sleep time on OS X with Mono is generally between the request time
-					// and up to 25% over. So we'll scale the sleep time back to account for that.
-					sleepTime = sleepTime * 4 / 5;
-#endif
+					switch (OSTailoredCode.CurrentOS)
+					{
+						case OSTailoredCode.DistinctOS.Linux: //TODO repro
+						case OSTailoredCode.DistinctOS.macOS:
+							// The actual sleep time on OS X with Mono is generally between the request time
+							// and up to 25% over. So we'll scale the sleep time back to account for that.
+							sleepTime = sleepTime * 4 / 5;
+							break;
+						case OSTailoredCode.DistinctOS.Windows:
+							// Assuming a timer period of 1 ms (i.e. TimeBeginPeriod(1)): The actual sleep time
+							// on Windows XP is generally within a half millisecond either way of the requested
+							// time. The actual sleep time on Windows 8 is generally between the requested time
+							// and up to a millisecond over. So we'll subtract 1 ms from the time to avoid
+							// sleeping longer than desired.
+							sleepTime -= 1;
+							break;
+					}
 
 					Thread.Sleep(Math.Max(sleepTime, 1));
 				}

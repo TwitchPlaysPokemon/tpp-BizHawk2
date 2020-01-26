@@ -1,5 +1,5 @@
 ﻿using BizHawk.Common;
-using BizHawk.Common.BizInvoke;
+using BizHawk.BizInvoke;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Sound;
 using BizHawk.Emulation.Cores.Waterbox;
@@ -47,7 +47,7 @@ namespace BizHawk.Emulation.Cores.Consoles.SNK
 			_serviceProvider.Register<IVideoProvider>(_videoProvider);
 		}
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound = true)
+		public bool FrameAdvance(IController controller, bool render, bool rendersound = true)
 		{
 			var t1 = Task.Run(() =>
 			{
@@ -67,6 +67,8 @@ namespace BizHawk.Emulation.Cores.Consoles.SNK
 			Frame++;
 			_soundProvider.Fetch();
 			_videoProvider.Fetch();
+
+			return true;
 		}
 
 		#region link cable
@@ -208,9 +210,9 @@ namespace BizHawk.Emulation.Cores.Consoles.SNK
 				_push = push;
 				_pull = pull;
 				_exporter = BizExvoker.GetExvoker(this, CallingConventionAdapters.Waterbox);
-				_readcb = _exporter.SafeResolve("CommsReadCallback");
-				_pollcb = _exporter.SafeResolve("CommsPollCallback");
-				_writecb = _exporter.SafeResolve("CommsWriteCallback");
+				_readcb = _exporter.GetProcAddrOrThrow("CommsReadCallback");
+				_pollcb = _exporter.GetProcAddrOrThrow("CommsPollCallback");
+				_writecb = _exporter.GetProcAddrOrThrow("CommsWriteCallback");
 				ConnectPointers();
 			}
 

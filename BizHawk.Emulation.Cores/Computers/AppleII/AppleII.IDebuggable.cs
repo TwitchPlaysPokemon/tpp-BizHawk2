@@ -73,7 +73,7 @@ namespace BizHawk.Emulation.Cores.Computers.AppleII
 			}
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem();
+		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem(new[] { "System Bus" });
 
 		public bool CanStep(StepType type)
 		{
@@ -104,7 +104,7 @@ namespace BizHawk.Emulation.Cores.Computers.AppleII
 			}
 		}
 
-		public int TotalExecutedCycles => (int)_machine.Cpu.Cycles;
+		public long TotalExecutedCycles => _machine.Cpu.Cycles;
 
 		private RegisterValue GetRegisterValue(KeyValuePair<string, int> reg)
 		{

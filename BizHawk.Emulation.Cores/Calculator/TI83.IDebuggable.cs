@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-
-using BizHawk.Common.NumberExtensions;
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Emulation.Cores.Calculators
@@ -132,7 +130,7 @@ namespace BizHawk.Emulation.Cores.Calculators
 			}
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem();
+		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem(new[] { "System Bus" });
 
 		[FeatureNotImplemented]
 		public void Step(StepType type)
@@ -145,6 +143,6 @@ namespace BizHawk.Emulation.Cores.Calculators
 			return false;
 		}
 
-		public int TotalExecutedCycles => _cpu.TotalExecutedCycles;
+		public long TotalExecutedCycles => _cpu.TotalExecutedCycles;
 	}
 }

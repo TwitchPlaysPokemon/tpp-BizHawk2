@@ -1,10 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
 using BizHawk.Client.Common;
@@ -29,7 +24,7 @@ namespace BizHawk.Client.EmuHawk
 		object _ownerEmulator;
 		public object OwnerEmulator
 		{
-			get { return _ownerEmulator; }
+			get => _ownerEmulator;
 			set
 			{
 				_ownerEmulator = value;
@@ -59,8 +54,7 @@ namespace BizHawk.Client.EmuHawk
 			int idx = 0;
 			foreach (var button in buttons)
 			{
-				var lvi = new ListViewItem();
-				lvi.Text = idx.ToString();
+				var lvi = new ListViewItem { Text = idx.ToString() };
 				lvi.SubItems.Add(button);
 				lvDiscs.Items.Add(lvi);
 				idx++;
@@ -105,9 +99,9 @@ namespace BizHawk.Client.EmuHawk
 
 					enableDiscs = btnOpen.Checked;
 
-					//since user hasnt ever needed to set the disc, make sure it's set here
-					//UPDATE: do it below
-					//Global.StickyXORAdapter.SetFloat(_discSelectName, psx.CurrentDiscIndexMounted);	
+					// since user hasn't ever needed to set the disc, make sure it's set here
+					// UPDATE: do it below
+					//Global.StickyXORAdapter.SetFloat(_discSelectName, psx.CurrentDiscIndexMounted);
 				}
 				else
 				{
@@ -128,8 +122,8 @@ namespace BizHawk.Client.EmuHawk
 				}
 			}
 
-			//make sure we try to keep something selected here, for clarity.
-			//but maybe later we'll just make it so that unselecting means no disc and dont display the disc 0
+			// make sure we try to keep something selected here, for clarity.
+			// but maybe later we'll just make it so that unselecting means no disc and don't display the disc 0
 			if (lvDiscs.SelectedIndices.Count == 0)
 				lvDiscs.SelectedIndices.Add(0);
 		}
@@ -143,17 +137,12 @@ namespace BizHawk.Client.EmuHawk
 
 		#endregion //IVirtualPadControl
 
-		private void groupBox1_Enter(object sender, EventArgs e)
-		{
-
-		}
-
 		private void lvDiscs_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			//not a valid way to fight unselection, it results in craptons of ping-ponging logic and eventual malfunction
-			//if (lvDiscs.SelectedIndices.Count == 0)
-			//  lvDiscs.SelectedIndices.Add(0);
-			//Global.StickyXORAdapter.SetFloat(_discSelectName, lvDiscs.SelectedIndices[0]);
+#if false // not a valid way to fight unselection, it results in craptons of ping-ponging logic and eventual malfunction
+			if (lvDiscs.SelectedIndices.Count == 0) lvDiscs.SelectedIndices.Add(0);
+			Global.StickyXORAdapter.SetFloat(_discSelectName, lvDiscs.SelectedIndices[0]);
+#endif
 
 			//emergency measure: if no selection, set no disc
 			if (lvDiscs.SelectedIndices.Count == 0)

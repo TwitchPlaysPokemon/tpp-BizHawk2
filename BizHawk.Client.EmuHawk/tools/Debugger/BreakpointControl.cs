@@ -12,8 +12,9 @@ namespace BizHawk.Client.EmuHawk
 {
 	public partial class BreakpointControl : UserControl
 	{
+		public MainForm MainForm { get; set; }
 		public IDebuggable Core { get; set; }
-		public IMemoryCallbackSystem MCS { get; set; }
+		public IMemoryCallbackSystem Mcs { get; set; }
 		public GenericDebugger ParentDebugger { get; set; }
 		public IMemoryDomains MemoryDomains { get; set; }
 
@@ -22,8 +23,7 @@ namespace BizHawk.Client.EmuHawk
 		public BreakpointControl()
 		{
 			InitializeComponent();
-			BreakpointView.QueryItemText += BreakPointView_QueryItemText;
-			BreakpointView.QueryItemBkColor += BreakPointView_QueryItemBkColor;
+			BreakpointView.RetrieveVirtualItem += BreakPointView_QueryItemText;
 			BreakpointView.VirtualMode = true;
 			_breakpoints.Callback = BreakpointCallback;
 		}
@@ -33,43 +33,29 @@ namespace BizHawk.Client.EmuHawk
 			UpdateStatsLabel();
 		}
 
-		private void BreakPointView_QueryItemText(int index, int column, out string text)
+		private void BreakPointView_QueryItemText(object sender, RetrieveVirtualItemEventArgs e)
 		{
-			text = "";
-			switch (column)
-			{
-				case 0:
-					text = $"{_breakpoints[index].Address:X}";
-					break;
-				case 1:
-					text = $"{_breakpoints[index].AddressMask:X}";
-					break;
-				case 2:
-					text = _breakpoints[index].Type.ToString();
-					break;
-				case 3:
-					text = _breakpoints[index].Name;
-					break;
-			}
-		}
+			var entry = _breakpoints[e.ItemIndex];
+			e.Item = new ListViewItem($"{entry.Address:X}");
+			e.Item.SubItems.Add($"{entry.AddressMask:X}");
+			e.Item.SubItems.Add(entry.Type.ToString());
+			e.Item.SubItems.Add(entry.Name);
 
-		private void BreakPointView_QueryItemBkColor(int index, int column, ref Color color)
-		{
-			color = _breakpoints[index].ReadOnly ? SystemColors.Control
-				: _breakpoints[index].Active ? Color.LightCyan
+			e.Item.BackColor = entry.ReadOnly ? SystemColors.Control
+				: entry.Active ? Color.LightCyan
 				: Color.White;
 		}
 
-		private void BreakpointCallback()
+		private void BreakpointCallback(uint addr, uint value, uint flags)
 		{
-			GlobalWin.MainForm.PauseEmulator();
+			MainForm.PauseEmulator();
 			UpdateValues();
-			GlobalWin.OSD.AddMessage("Breakpoint hit");
+			MainForm.AddOnScreenMessage("Breakpoint hit");
 		}
 
-		private void SeekCallback()
+		private void SeekCallback(uint addr, uint value, uint flags)
 		{
-			BreakpointCallback();
+			BreakpointCallback(addr, value, flags);
 
 			var seekBreakpoint = _breakpoints.FirstOrDefault(x => x.Name.StartsWith(SeekName));
 
@@ -82,15 +68,13 @@ namespace BizHawk.Client.EmuHawk
 			ParentDebugger.DisableCancelSeekBtn();
 		}
 
-		public void NewUpdate(ToolFormUpdateType type) { }
-
 		public void UpdateValues()
 		{
 			if (Enabled)
 			{
 				CheckForNewBreakpoints();
 
-				BreakpointView.ItemCount = _breakpoints.Count;
+				BreakpointView.VirtualListSize = _breakpoints.Count;
 				UpdateStatsLabel();
 			}
 		}
@@ -98,9 +82,9 @@ namespace BizHawk.Client.EmuHawk
 		// Did any breakpoints get added from other sources such as lua?
 		private void CheckForNewBreakpoints()
 		{
-			if (MCS != null)
+			if (Mcs != null)
 			{
-				foreach (var callback in MCS)
+				foreach (var callback in Mcs)
 				{
 					if (!_breakpoints.Any(b =>
 						b.Type == callback.Type &&
@@ -117,14 +101,14 @@ namespace BizHawk.Client.EmuHawk
 
 		public void GenerateUI()
 		{
-			if (MCS != null)
+			if (Mcs != null)
 			{
-				foreach (var callback in MCS)
+				foreach (var callback in Mcs)
 				{
 					_breakpoints.Add(new Breakpoint(Core, callback));
 				}
 
-				BreakpointView.ItemCount = _breakpoints.Count;
+				BreakpointView.VirtualListSize = _breakpoints.Count;
 				BreakpointView.Refresh();
 				UpdateBreakpointRemoveButton();
 				UpdateStatsLabel();
@@ -144,9 +128,9 @@ namespace BizHawk.Client.EmuHawk
 
 		public void AddBreakpoint(uint address, uint mask, MemoryCallbackType type)
 		{
-			_breakpoints.Add(Core, address, mask, type);
+			_breakpoints.Add(Core, MemoryDomains.SystemBus.Name, address, mask, type);
 
-			BreakpointView.ItemCount = _breakpoints.Count;
+			BreakpointView.VirtualListSize = _breakpoints.Count;
 			UpdateBreakpointRemoveButton();
 			UpdateStatsLabel();
 		}
@@ -157,10 +141,10 @@ namespace BizHawk.Client.EmuHawk
 
 			if (b.ShowHawkDialog() == DialogResult.OK)
 			{
-				_breakpoints.Add(Core, b.Address, b.AddressMask, b.BreakType);
+				_breakpoints.Add(Core, MemoryDomains.SystemBus.Name, b.Address, b.AddressMask, b.BreakType);
 			}
 
-			BreakpointView.ItemCount = _breakpoints.Count;
+			BreakpointView.VirtualListSize = _breakpoints.Count;
 			UpdateBreakpointRemoveButton();
 			UpdateStatsLabel();
 		}
@@ -170,7 +154,7 @@ namespace BizHawk.Client.EmuHawk
 		public void AddSeekBreakpoint(uint pcVal, int pcBitSize)
 		{
 			var name = SeekName + pcVal.ToHexString(pcBitSize / 4);
-			_breakpoints.Add(new Breakpoint(name, true, Core, SeekCallback, pcVal, 0xFFFFFFFF, MemoryCallbackType.Execute));
+			_breakpoints.Add(new Breakpoint(name, true, Core, MemoryDomains.SystemBus.Name, SeekCallback, pcVal, 0xFFFFFFFF, MemoryCallbackType.Execute));
 		}
 
 		public void RemoveCurrentSeek()
@@ -185,16 +169,10 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		private IEnumerable<int> SelectedIndices => BreakpointView.SelectedIndices.Cast<int>();
+		
+		private IEnumerable<Breakpoint> SelectedItems => SelectedIndices.Select(index => _breakpoints[index]);
 
-	    private IEnumerable<Breakpoint> SelectedItems
-		{
-			get { return SelectedIndices.Select(index => _breakpoints[index]); }
-		}
-
-		private IEnumerable<Breakpoint> EditableItems
-		{
-			get { return SelectedItems.Where(item => !item.ReadOnly); }
-		}
+		private IEnumerable<Breakpoint> EditableItems => SelectedItems.Where(item => !item.ReadOnly);
 
 		private void RemoveBreakpointButton_Click(object sender, EventArgs e)
 		{
@@ -208,7 +186,7 @@ namespace BizHawk.Client.EmuHawk
 						_breakpoints.Remove(item);
 					}
 
-					BreakpointView.ItemCount = _breakpoints.Count;
+					BreakpointView.VirtualListSize = _breakpoints.Count;
 					UpdateBreakpointRemoveButton();
 					UpdateStatsLabel();
 				}
@@ -243,7 +221,7 @@ namespace BizHawk.Client.EmuHawk
 						item.Active ^= true;
 					}
 
-					BreakpointView.ItemCount = _breakpoints.Count;
+					BreakpointView.VirtualListSize = _breakpoints.Count;
 					UpdateBreakpointRemoveButton();
 					UpdateStatsLabel();
 				}
@@ -270,7 +248,7 @@ namespace BizHawk.Client.EmuHawk
 				item.Active ^= true;
 			}
 
-			BreakpointView.ItemCount = _breakpoints.Count;
+			BreakpointView.VirtualListSize = _breakpoints.Count;
 			UpdateStatsLabel();
 		}
 
@@ -284,11 +262,11 @@ namespace BizHawk.Client.EmuHawk
 
 				if (b.ShowHawkDialog() == DialogResult.OK)
 				{
-					_breakpoints.Add(new Breakpoint(Core, breakpoint.Callback, b.Address, b.AddressMask, b.BreakType, breakpoint.Active));
+					_breakpoints.Add(new Breakpoint(Core, MemoryDomains.SystemBus.Name, breakpoint.Callback, b.Address, b.AddressMask, b.BreakType, breakpoint.Active));
 				}
 			}
 
-			BreakpointView.ItemCount = _breakpoints.Count;
+			BreakpointView.VirtualListSize = _breakpoints.Count;
 			UpdateBreakpointRemoveButton();
 			UpdateStatsLabel();
 		}
@@ -310,7 +288,7 @@ namespace BizHawk.Client.EmuHawk
 				}
 			}
 
-			BreakpointView.ItemCount = _breakpoints.Count;
+			BreakpointView.VirtualListSize = _breakpoints.Count;
 			UpdateBreakpointRemoveButton();
 			UpdateStatsLabel();
 		}
@@ -339,7 +317,7 @@ namespace BizHawk.Client.EmuHawk
 				b.AddressMask = (uint)mask;
 			}
 
-			if (!MCS.ExecuteCallbacksAvailable)
+			if (!Mcs.ExecuteCallbacksAvailable)
 			{
 				b.DisableExecuteOption();
 			}

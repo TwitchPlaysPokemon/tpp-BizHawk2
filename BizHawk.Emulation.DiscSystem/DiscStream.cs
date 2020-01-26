@@ -63,6 +63,7 @@ namespace BizHawk.Emulation.DiscSystem
 		int cachedSector;
 		DiscSectorReader dsr;
 
+		/// <exception cref="NotSupportedException"><paramref name="view"/> is not <see cref="DiscSectorReaderPolicy.EUserData2048Mode.AssumeMode1"/> or <see cref="DiscSectorReaderPolicy.EUserData2048Mode.AssumeMode2_Form1"/></exception>
 		public DiscStream(Disc disc, EDiscStreamView view, int from_lba)
 		{
 			SectorSize = 2048;
@@ -80,7 +81,7 @@ namespace BizHawk.Emulation.DiscSystem
 					dsr.Policy.UserData2048Mode = DiscSectorReaderPolicy.EUserData2048Mode.AssumeMode2_Form1;
 					break;
 				default:
-					throw new NotSupportedException("Unsupported EDiscStreamView");
+					throw new NotSupportedException($"Unsupported {nameof(EDiscStreamView)}");
 			}
 
 
@@ -97,7 +98,7 @@ namespace BizHawk.Emulation.DiscSystem
 
 		public override long Position
 		{
-			get { return currPosition; }
+			get => currPosition;
 			set
 			{
 				currPosition = value;

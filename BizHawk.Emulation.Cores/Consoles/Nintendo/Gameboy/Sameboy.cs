@@ -3,12 +3,10 @@ using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Properties;
 using BizHawk.Emulation.Cores.Waterbox;
 using System;
-using System.Collections.Generic;
+
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BizHawk.Emulation.Cores.Consoles.Nintendo.Gameboy
 {
@@ -272,7 +270,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.Gameboy
 			};
 		}
 
-		protected unsafe override void FrameAdvancePost()
+		protected override unsafe void FrameAdvancePost()
 		{
 			if (_scanlineCallback != null && _scanlineCallbackLine == -1)
 				_scanlineCallback(_core.GetIoReg(0x40));

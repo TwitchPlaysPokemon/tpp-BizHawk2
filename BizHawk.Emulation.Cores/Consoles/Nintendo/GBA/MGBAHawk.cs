@@ -3,7 +3,7 @@ using BizHawk.Emulation.Common;
 
 namespace BizHawk.Emulation.Cores.Nintendo.GBA
 {
-	[Core("mGBA", "endrift", true, true, "0.6.0 (24ab81f8db7745586cef246be8957ad272aded9b)", "https://mgba.io/", false)]
+	[Core("mGBA", "endrift", true, true, "0.7.2", "https://mgba.io/", false)]
 	[ServiceNotApplicable(typeof(IDriveLight), typeof(IRegionable))]
 	public partial class MGBAHawk : IEmulator, IVideoProvider, ISoundProvider, IGBAGPUViewable,
 		ISaveRam, IStatable, IInputPollable, ISettable<MGBAHawk.Settings, MGBAHawk.SyncSettings>,
@@ -40,7 +40,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 			_core = LibmGBA.BizCreate(bios, file, file.Length, GetOverrideInfo(game), skipBios);
 			if (_core == IntPtr.Zero)
 			{
-				throw new InvalidOperationException("BizCreate() returned NULL!  Bad BIOS? and/or ROM?");
+				throw new InvalidOperationException($"{nameof(LibmGBA.BizCreate)}() returned NULL!  Bad BIOS? and/or ROM?");
 			}
 
 			try
@@ -67,7 +67,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 
 		public ControllerDefinition ControllerDefinition => GBA.GBAController;
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound = true)
+		public bool FrameAdvance(IController controller, bool render, bool rendersound = true)
 		{
 			Frame++;
 			if (controller.IsPressed("Power"))
@@ -81,9 +81,9 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 			IsLagFrame = LibmGBA.BizAdvance(
 				_core,
 				VBANext.GetButtons(controller),
-				_videobuff,
+				render ? _videobuff : _dummyvideobuff,
 				ref _nsamp,
-				_soundbuff,
+				rendersound ? _soundbuff : _dummysoundbuff,
 				RTCTime(),
 				(short)controller.GetFloat("Tilt X"),
 				(short)controller.GetFloat("Tilt Y"),
@@ -97,6 +97,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 
 			// this should be called in hblank on the appropriate line, but until we implement that, just do it here
 			_scanlinecb?.Invoke();
+
+			return true;
 		}
 
 		public int Frame { get; private set; }

@@ -167,11 +167,13 @@ namespace BizHawk.Emulation.DiscSystem
 				TryGetValue(key, out def);
 				return def;
 			}
+
+			/// <exception cref="CCDParseException"><paramref name="key"/> not found in <see langword="this"/></exception>
 			public int FetchOrFail(string key)
 			{
 				int ret;
 				if(!TryGetValue(key, out ret))
-					throw new CCDParseException("Malformed or unexpected CCD format: missing required [Entry] key: " + key);
+					throw new CCDParseException($"Malformed or unexpected CCD format: missing required [Entry] key: {key}");
 				return ret;
 			}
 		}
@@ -234,9 +236,7 @@ namespace BizHawk.Emulation.DiscSystem
 			return version;
 		}
 
-		/// <summary>
-		/// Parses a CCD file contained in the provided stream
-		/// </summary>
+		/// <exception cref="CCDParseException">parsed <see cref="CCDFile.DataTracksScrambled"/> is <c>1</c>, parsed session number is not <c>1</c>, or malformed entry</exception>
 		public CCDFile ParseFrom(Stream stream)
 		{
 			CCDFile ccdf = new CCDFile();
@@ -250,7 +250,7 @@ namespace BizHawk.Emulation.DiscSystem
 			ccdf.DataTracksScrambled = discSection.FetchOrDefault(0, "DATATRACKSSCRAMBLED");
 			ccdf.CDTextLength = discSection.FetchOrDefault(0, "CDTEXTLENGTH");
 
-			if (ccdf.DataTracksScrambled==1) throw new CCDParseException("Malformed CCD format: DataTracksScrambled=1 not supported. Please report this, so we can understand what it means.");
+			if (ccdf.DataTracksScrambled==1) throw new CCDParseException($"Malformed CCD format: {nameof(ccdf.DataTracksScrambled)}=1 not supported. Please report this, so we can understand what it means.");
 
 			for (int i = 2; i < sections.Count; i++)
 			{
@@ -322,7 +322,7 @@ namespace BizHawk.Emulation.DiscSystem
 			public List<RawTOCEntry> RawTOCEntries;
 			public CCDFile ParsedCCDFile;
 			public bool Valid;
-			public Exception FailureException;
+			public CCDParseException FailureException;
 			public string ImgPath;
 			public string SubPath;
 			public string CcdPath;
@@ -471,10 +471,7 @@ namespace BizHawk.Emulation.DiscSystem
 			}
 		}
 
-
-		/// <summary>
-		/// Loads a CCD at the specified path to a Disc object
-		/// </summary>
+		/// <exception cref="CCDParseException">file <paramref name="ccdPath"/> not found, nonexistent IMG file, nonexistent SUB file, IMG or SUB file not multiple of <c>2352 B</c>, or IMG and SUB files differ in length</exception>
 		public Disc LoadCCDToDisc(string ccdPath, DiscMountPolicy IN_DiscMountPolicy)
 		{
 			var loadResults = LoadCCDPath(ccdPath);

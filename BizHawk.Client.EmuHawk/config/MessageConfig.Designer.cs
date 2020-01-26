@@ -395,7 +395,7 @@
 			this.label7.Name = "label7";
 			this.label7.Size = new System.Drawing.Size(86, 13);
 			this.label7.TabIndex = 18;
-			this.label7.Text = "Last Frame Input";
+			this.label7.Text = "Previous Frame Input";
 			// 
 			// label8
 			// 
@@ -530,8 +530,7 @@
             0,
             0,
             0});
-			this.XNumeric.Click += new System.EventHandler(this.XNumeric_Click);
-			this.XNumeric.KeyUp += new System.Windows.Forms.KeyEventHandler(this.XNumeric_KeyUp);
+			this.XNumeric.ValueChanged += new System.EventHandler(this.XNumeric_Changed);
 			// 
 			// YNumeric
 			// 
@@ -550,8 +549,7 @@
             0,
             0,
             0});
-			this.YNumeric.Click += new System.EventHandler(this.YNumeric_Click);
-			this.YNumeric.KeyUp += new System.Windows.Forms.KeyEventHandler(this.YNumeric_KeyUp);
+			this.YNumeric.ValueChanged += new System.EventHandler(this.YNumeric_Changed);
 			// 
 			// label1
 			// 

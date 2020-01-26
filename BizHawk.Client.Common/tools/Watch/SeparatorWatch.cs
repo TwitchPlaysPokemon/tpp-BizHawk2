@@ -21,6 +21,14 @@ namespace BizHawk.Client.Common
 		/// </summary>
 		public static SeparatorWatch Instance => new SeparatorWatch();
 
+		public static SeparatorWatch NewSeparatorWatch(string description)
+		{
+			return new SeparatorWatch
+			{
+				Notes = description
+			};
+		}
+
 		/// <summary>
 		/// Get the appropriate DisplayType
 		/// </summary>
@@ -48,7 +56,7 @@ namespace BizHawk.Client.Common
 		/// <summary>
 		/// Ignore that stuff
 		/// </summary>
-		public override string ValueString => "";
+		public override string ValueString => Notes; //"";
 
 		/// <summary>
 		/// Ignore that stuff
@@ -62,7 +70,18 @@ namespace BizHawk.Client.Common
 		/// <returns>A well formatted string representation</returns>
 		public override string ToDisplayString()
 		{
-			return "----";
+			return string.IsNullOrEmpty(Notes)
+				? "----"
+				: Notes;
+		}
+
+		/// <summary>
+		/// Transforms the current instance into a string
+		/// </summary>
+		/// <returns>A <see cref="string"/> representation of the current <see cref="Watch"/></returns>
+		public override string ToString()
+		{
+			return $"0\tS\t_\t1\t\t{Notes.Trim('\r', '\n')}";
 		}
 
 		/// <summary>

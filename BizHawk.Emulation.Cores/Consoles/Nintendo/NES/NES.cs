@@ -36,7 +36,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			ControllerSettings = SyncSettings.Controls;
 			CoreComm = comm;
 
-			MemoryCallbacks = new MemoryCallbackSystem();
+			MemoryCallbacks = new MemoryCallbackSystem(new[] { "System Bus" });
 			BootGodDB.Initialize();
 			videoProvider = new MyVideoProvider(this);
 			Init(game, rom, fdsbios);
@@ -57,13 +57,12 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				PickVSPalette(cart);
 			}
 
-
 			ser.Register<IDisassemblable>(cpu);
 
 			Tracer = new TraceBuffer { Header = cpu.TraceHeader };
 			ser.Register<ITraceable>(Tracer);
 			ser.Register<IVideoProvider>(videoProvider);
-			ser.Register<ISoundProvider>(magicSoundProvider);
+			ser.Register<ISoundProvider>(this);
 
 			if (Board is BANDAI_FCG_1)
 			{
@@ -77,7 +76,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		static readonly bool USE_DATABASE = true;
 		public RomStatus RomStatus;
 
-		public IEmulatorServiceProvider ServiceProvider { get; private set; }
+		public IEmulatorServiceProvider ServiceProvider { get; }
 
 		private NES()
 		{
@@ -113,111 +112,15 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			}
 		}
 
-		public bool IsVS
-		{
-			get { return _isVS; }
-		}
+		public bool IsVS => _isVS;
 
-		public bool IsFDS
-		{
-			get { return Board is FDS; }
-		}
+		public bool IsFDS => Board is FDS;
 
-		NESWatch GetWatch(NESWatch.EDomain domain, int address)
-		{
-			if (domain == NESWatch.EDomain.Sysbus)
-			{
-				NESWatch ret = sysbus_watch[address] ?? new NESWatch(this, domain, address);
-				sysbus_watch[address] = ret;
-				return ret;
-			}
-			return null;
-		}
+		public CoreComm CoreComm { get; }
 
-		class NESWatch
-		{
-			public enum EDomain
-			{
-				Sysbus
-			}
+		public DisplayType Region => _display_type;
 
-			public NESWatch(NES nes, EDomain domain, int address)
-			{
-				Address = address;
-				Domain = domain;
-				if (domain == EDomain.Sysbus)
-				{
-					watches = nes.sysbus_watch;
-				}
-			}
-			public int Address;
-			public EDomain Domain;
-
-			public enum EFlags
-			{
-				None = 0,
-				GameGenie = 1,
-				ReadPrint = 2
-			}
-			EFlags flags;
-
-			public void Sync()
-			{
-				if (flags == EFlags.None)
-					watches[Address] = null;
-				else watches[Address] = this;
-			}
-
-			public void SetGameGenie(byte? compare, byte value)
-			{
-				flags |= EFlags.GameGenie;
-				Compare = compare;
-				Value = value;
-				Sync();
-			}
-
-			public bool HasGameGenie
-			{
-				get
-				{
-					return (flags & EFlags.GameGenie) != 0;
-				}
-			}
-
-			public byte ApplyGameGenie(byte curr)
-			{
-				if (!HasGameGenie)
-				{
-					return curr;
-				}
-				else if (curr == Compare || Compare == null)
-				{
-					Console.WriteLine("applied game genie");
-					return (byte)Value;
-				}
-				else
-				{
-					return curr;
-				}
-			}
-
-			public void RemoveGameGenie()
-			{
-				flags &= ~EFlags.GameGenie;
-				Sync();
-			}
-
-			byte? Compare;
-			byte Value;
-
-			NESWatch[] watches;
-		}
-
-		public CoreComm CoreComm { get; private set; }
-
-		public DisplayType Region { get { return _display_type; } }
-
-		class MyVideoProvider : IVideoProvider
+		public class MyVideoProvider : IVideoProvider
 		{
 			//public int ntsc_top = 8;
 			//public int ntsc_bottom = 231;
@@ -314,10 +217,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 					}
 				}
 			}
-			public int VirtualWidth { get { return (int)(BufferWidth * 1.146); } }
-			public int VirtualHeight { get { return BufferHeight; } }
-			public int BufferWidth { get { return right - left + 1; } }
-			public int BackgroundColor { get { return 0; } }
+			public int VirtualWidth => (int)(BufferWidth * 1.146);
+			public int VirtualHeight => BufferHeight;
+			public int BufferWidth => right - left + 1;
+			public int BackgroundColor => 0;
+
 			public int BufferHeight
 			{
 				get
@@ -337,7 +241,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			public int VsyncDenominator => emu.VsyncDen;
 		}
 
-		MyVideoProvider videoProvider;
+		public MyVideoProvider videoProvider;
 
 		[Obsolete] // with the changes to both nes and quicknes cores, nothing uses this anymore
 		public static readonly ControllerDefinition NESController =
@@ -353,7 +257,9 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		public ControllerDefinition ControllerDefinition { get; private set; }
 
 		private int _frame;
-		public int Frame { get { return _frame; } set { _frame = value; } }
+		public int Frame { get => _frame;
+			set => _frame = value;
+		}
 
 		public void ResetCounters()
 		{
@@ -364,11 +270,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 		public long Timestamp { get; private set; }
 
-		public bool DeterministicEmulation { get { return true; } }
+		public bool DeterministicEmulation => true;
 
-		public string SystemId { get { return "NES"; } }
+		public string SystemId => "NES";
 
-		public string GameName { get { return game_name; } }
+		public string GameName => game_name;
 
 		public enum EDetectionOrigin
 		{
@@ -749,7 +655,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			//create the board's rom and vrom
 			if (iNesHeaderInfo != null)
 			{
-				var ms = new MemoryStream(file, false);
+				using var ms = new MemoryStream(file, false);
 				ms.Seek(16, SeekOrigin.Begin); // ines header
 				//pluck the necessary bytes out of the file
 				if (iNesHeaderInfo.trainer_size != 0)

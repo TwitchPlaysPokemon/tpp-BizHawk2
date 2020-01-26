@@ -9,7 +9,10 @@ namespace BizHawk.Client.Common
 	public static class StringLogUtil
 	{
 		public static bool DefaultToDisk { get; set; }
+
 		public static bool DefaultToAWE { get; set; }
+
+		/// <exception cref="InvalidOperationException"><see cref="DefaultToAWE"/> is <see langword="true"/> but not running on Windows host</exception>
 		public static IStringLog MakeStringLog()
 		{
 			if (DefaultToDisk)
@@ -19,7 +22,9 @@ namespace BizHawk.Client.Common
 
 			if (DefaultToAWE)
 			{
-				return new StreamStringLog(false);
+				return OSTailoredCode.IsUnixHost
+					? throw new InvalidOperationException("logging to AWE is only available on Windows for now")
+					: new StreamStringLog(false);
 			}
 
 			return new ListStringLog();
@@ -75,7 +80,7 @@ namespace BizHawk.Client.Common
 			_mDisk = disk;
 			if (disk)
 			{
-				var path = TempFileCleaner.GetTempFilename("movieOnDisk");
+				var path = TempFileManager.GetTempFilename("movieOnDisk");
 				stream = new FileStream(path, FileMode.Create, System.Security.AccessControl.FileSystemRights.FullControl, FileShare.None, 4 * 1024, FileOptions.DeleteOnClose);
 			}
 			else
@@ -89,7 +94,7 @@ namespace BizHawk.Client.Common
 
 		public IStringLog Clone()
 		{
-			StreamStringLog ret = new StreamStringLog(_mDisk); // doesnt necessarily make sense to copy the mDisk value, they could be designated for different targets...
+			StreamStringLog ret = new StreamStringLog(_mDisk); // doesn't necessarily make sense to copy the mDisk value, they could be designated for different targets...
 			for (int i = 0; i < Count; i++)
 			{
 				ret.Add(this[i]);

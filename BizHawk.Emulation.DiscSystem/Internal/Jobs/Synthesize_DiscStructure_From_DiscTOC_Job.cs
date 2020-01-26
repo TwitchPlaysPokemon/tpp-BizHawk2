@@ -9,6 +9,7 @@ namespace BizHawk.Emulation.DiscSystem
 		public DiscTOC TOCRaw;
 		public DiscStructure Result;
 
+		/// <exception cref="InvalidOperationException">first track of <see cref="TOCRaw"/> is not <c>1</c></exception>
 		public void Run()
 		{
 			var dsr = new DiscSectorReader(IN_Disc);
@@ -22,7 +23,7 @@ namespace BizHawk.Emulation.DiscSystem
 			session.Number = 1;
 
 			if (TOCRaw.FirstRecordedTrackNumber != 1)
-				throw new InvalidOperationException("Unsupported: FirstRecordedTrackNumber != 1");
+				throw new InvalidOperationException($"Unsupported: {nameof(TOCRaw.FirstRecordedTrackNumber)} != 1");
 
 			//add a lead-in track
 			session.Tracks.Add(new DiscStructure.Track()

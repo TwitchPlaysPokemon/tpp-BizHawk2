@@ -6,11 +6,14 @@ using System.Windows.Forms;
 
 using BizHawk.Client.Common;
 using BizHawk.Client.EmuHawk.WinFormExtensions;
+using BizHawk.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
 	public partial class PathConfig : Form
 	{
+		private readonly Config _config;
+
 		// All path text boxes should do some kind of error checking
 		// Config path under base, config will default to %exe%
 		private void LockDownCores()
@@ -20,12 +23,12 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			string[] coresToHide = { };
+			string[] coresToHide = { "GB4x", "O2", "ChannelF", "AmstradCPC" };
 
 			foreach (var core in coresToHide)
 			{
-				PathTabControl.TabPages.Remove(
-					PathTabControl.TabPages().FirstOrDefault(tp => tp.Name == core) ?? new TabPage());
+				var tabPage = PathTabControl.TabPages().First(tp => tp.Name == core);
+				PathTabControl.TabPages.Remove(tabPage);
 			}
 		}
 
@@ -33,20 +36,22 @@ namespace BizHawk.Client.EmuHawk
 		{
 			"%recent%",
 			"%exe%",
+			"%rom%",
 			".\\",
 			"..\\",
 		};
 
-		public PathConfig()
+		public PathConfig(Config config)
 		{
+			_config = config;
 			InitializeComponent();
 		}
 
 		private void LoadSettings()
 		{
-			RecentForROMs.Checked = Global.Config.UseRecentForROMs;
+			RecentForROMs.Checked = _config.UseRecentForRoms;
 
-			DoTabs(Global.Config.PathEntries.ToList());
+			DoTabs(_config.PathEntries.ToList());
 			SetDefaultFocusedTab();
 			DoRomToggle();
 		}
@@ -78,7 +83,7 @@ namespace BizHawk.Client.EmuHawk
 			PathTabControl.TabPages.Clear();
 
 			// Separate by system
-			var systems = Global.Config.PathEntries
+			var systems = _config.PathEntries
 				.Select(s => s.SystemDisplayName)
 				.Distinct()
 				.ToList();
@@ -92,17 +97,17 @@ namespace BizHawk.Client.EmuHawk
 			var tabPages = new List<TabPage>(systems.Count);
 
 			int x = UIHelper.ScaleX(6);
-			int textboxWidth = UIHelper.ScaleX(70);
+			int textBoxWidth = UIHelper.ScaleX(70);
 			int padding = UIHelper.ScaleX(5);
 			int buttonWidth = UIHelper.ScaleX(26);
 			int buttonHeight = UIHelper.ScaleY(23);
-			int buttonOffsetY = -1; // To align the top with the textbox I guess? Always 1 pixel regardless of scaling.
+			int buttonOffsetY = -1; // To align the top with the TextBox I guess? Always 1 pixel regardless of scaling.
 			int widgetOffset = UIHelper.ScaleX(85);
 			int rowHeight = UIHelper.ScaleY(30);
 
 			foreach (var systemDisplayName in systems)
 			{
-				var systemId = Global.Config.PathEntries.First(p => p.SystemDisplayName == systemDisplayName).System;
+				var systemId = _config.PathEntries.First(p => p.SystemDisplayName == systemDisplayName).System;
 				var t = new TabPage
 				{
 					Text = systemDisplayName,
@@ -113,8 +118,7 @@ namespace BizHawk.Client.EmuHawk
 				var paths = pathCollection
 					.Where(p => p.System == systemId)
 					.OrderBy(p => p.Ordinal)
-					.ThenBy(p => p.Type)
-					.ToList();
+					.ThenBy(p => p.Type);
 
 				var y = UIHelper.ScaleY(14);
 				foreach (var path in paths)
@@ -123,7 +127,7 @@ namespace BizHawk.Client.EmuHawk
 					{
 						Text = path.Path,
 						Location = new Point(x, y),
-						Width = textboxWidth,
+						Width = textBoxWidth,
 						Name = path.Type,
 						Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
 						MinimumSize = new Size(UIHelper.ScaleX(26), UIHelper.ScaleY(23)),
@@ -173,7 +177,7 @@ namespace BizHawk.Client.EmuHawk
 								return;
 							}
 
-							var f = new FirmwaresConfig { TargetSystem = "Global" };
+							using var f = new FirmwaresConfig { TargetSystem = "Global" };
 							f.ShowDialog(this);
 						};
 
@@ -196,12 +200,6 @@ namespace BizHawk.Client.EmuHawk
 					y += rowHeight;
 				}
 
-				var sys = systemDisplayName;
-				if (systemDisplayName == "PCE") // Hack
-				{
-					sys = "PCECD";
-				}
-
 				tabPages.Add(t);
 			}
 
@@ -217,35 +215,52 @@ namespace BizHawk.Client.EmuHawk
 				system = null;
 			}
 
-			var f = new FolderBrowserEx
+			DialogResult result;
+			string selectedPath;
+			if (OSTailoredCode.IsUnixHost)
 			{
-				Description = "Set the directory for " + name,
-				SelectedPath = PathManager.MakeAbsolutePath(box.Text, system)
-			};
-			var result = f.ShowDialog();
+				// FolderBrowserEx doesn't work in Mono for obvious reasons
+				using var f = new FolderBrowserDialog
+				{
+					Description = $"Set the directory for {name}",
+					SelectedPath = PathManager.MakeAbsolutePath(box.Text, system)
+				};
+				result = f.ShowDialog();
+				selectedPath = f.SelectedPath;
+			}
+			else
+			{
+				using var f = new FolderBrowserEx
+				{
+					Description = $"Set the directory for {name}",
+					SelectedPath = PathManager.MakeAbsolutePath(box.Text, system)
+				};
+				result = f.ShowDialog();
+				selectedPath = f.SelectedPath;
+			}
 			if (result == DialogResult.OK)
 			{
-				box.Text = PathManager.TryMakeRelative(f.SelectedPath, system);
+				box.Text = PathManager.TryMakeRelative(selectedPath, system);
 			}
 		}
 
 		private void SaveSettings()
 		{
-			Global.Config.UseRecentForROMs = RecentForROMs.Checked;
+			_config.UseRecentForRoms = RecentForROMs.Checked;
 
 			foreach (var t in AllPathBoxes)
 			{
-				var pathEntry = Global.Config.PathEntries.First(p => p.System == t.Parent.Name && p.Type == t.Name);
+				var pathEntry = _config.PathEntries.First(p => p.System == t.Parent.Name && p.Type == t.Name);
 				pathEntry.Path = t.Text;
 			}
 		}
 
 		private void DoRomToggle()
 		{
-			AllPathControls
-				.Where(c => c.Name == "ROM")
-				.ToList()
-				.ForEach(control => control.Enabled = !RecentForROMs.Checked);
+			foreach (var control in AllPathControls.Where(c => c.Name == "ROM"))
+			{
+				control.Enabled = !RecentForROMs.Checked;
+			}
 		}
 
 		private IEnumerable<TextBox> AllPathBoxes
@@ -308,6 +323,9 @@ namespace BizHawk.Client.EmuHawk
 		private void Ok_Click(object sender, EventArgs e)
 		{
 			SaveSettings();
+
+			PathManager.RefreshTempPath();
+
 			GlobalWin.OSD.AddMessage("Path settings saved");
 			Close();
 		}

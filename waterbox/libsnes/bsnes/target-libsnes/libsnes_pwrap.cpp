@@ -47,6 +47,9 @@ enum eMessage : int32
 	eMessage_QUERY_state_hook_write,
 	eMessage_QUERY_state_hook_nmi,
 	eMessage_QUERY_state_hook_irq,
+	eMessage_QUERY_state_hook_exec_smp,
+	eMessage_QUERY_state_hook_read_smp,
+	eMessage_QUERY_state_hook_write_smp,
 	eMessage_QUERY_enable_trace,
 	eMessage_QUERY_enable_scanline,
 	eMessage_QUERY_enable_audio,
@@ -86,6 +89,9 @@ enum eMessage : int32
 	eMessage_BRK_hook_write,
 	eMessage_BRK_hook_nmi,
 	eMessage_BRK_hook_irq,
+	eMessage_BRK_hook_exec_smp,
+	eMessage_BRK_hook_read_smp,
+	eMessage_BRK_hook_write_smp,
 	eMessage_BRK_scanlineStart,
 };
 
@@ -107,6 +113,7 @@ struct CPURegsComm {
 	u8 p, nothing;
 	u32 aa, rd;
 	u8 sp, dp, db, mdr;
+	u16 v, h;
 }
 #ifndef _MSC_VER
 __attribute__((__packed__))
@@ -158,8 +165,8 @@ struct CommStruct
 
 	int32 padding3;
 
-	int64 cdl_ptr[4];
-	int32 cdl_size[4];
+	int64 cdl_ptr[8];
+	int32 cdl_size[8];
 
 	CPURegsComm cpuregs;
 	LayerEnablesComm layerEnables;
@@ -167,8 +174,6 @@ struct CommStruct
 	//static configuration-type information which can be grabbed off the core at any time without even needing a QUERY command
 	uint32 region;
 	uint32 mapper;
-
-	int32 padding4;
 
 	//===========================================================
 
@@ -348,6 +353,25 @@ static void debug_op_irq()
 	BREAK(eMessage_BRK_hook_irq);
 }
 
+static void debug_op_exec_smp(uint24 addr)
+{
+	comm.addr = addr;
+	BREAK(eMessage_BRK_hook_exec_smp);
+}
+
+static void debug_op_read_smp(uint24 addr)
+{
+	comm.addr = addr;
+	BREAK(eMessage_BRK_hook_read_smp);
+}
+
+static void debug_op_write_smp(uint24 addr, uint8 value)
+{
+	comm.addr = addr;
+	comm.value = value;
+	BREAK(eMessage_BRK_hook_write_smp);
+}
+
 void pwrap_init()
 {
 	//bsnes's interface initialization calls into this after initializing itself, so we can get a chance to mod it for pwrap functionalities
@@ -455,6 +479,15 @@ void QUERY_state_hook_nmi() {
 void QUERY_state_hook_irq() {
 	SNES::cpu.debugger.op_irq = comm.value ? debug_op_irq : hook<void()>();
 }
+void QUERY_state_hook_exec_smp() {
+	SNES::smp.debugger.op_exec = comm.value ? debug_op_exec_smp : hook<void(uint24)>();
+}
+void QUERY_state_hook_read_smp() {
+	SNES::smp.debugger.op_read = comm.value ? debug_op_read_smp : hook<void(uint24)>();
+}
+void QUERY_state_hook_write_smp() {
+	SNES::smp.debugger.op_write = comm.value ? debug_op_write_smp : hook<void(uint24, uint8)>();
+}
 void QUERY_state_enable_trace() {
 	snes_set_trace_callback(comm.value, snes_trace);
 }
@@ -503,6 +536,8 @@ void QUERY_peek_cpu_regs() {
 	comm.cpuregs.vector = SNES::cpu.regs.vector;
 	comm.cpuregs.p = SNES::cpu.regs.p;
 	comm.cpuregs.nothing = 0;
+	comm.cpuregs.v = SNES::cpu.vcounter();
+	comm.cpuregs.h = SNES::cpu.hdot();
 }
 void QUERY_peek_set_cdl() {
 	for (int i = 0; i<eCDLog_AddrType_NUM; i++)
@@ -535,6 +570,9 @@ const Action kHandlers_QUERY[] = {
 	QUERY_state_hook_exec, //eMessage_QUERY_state_hook_exec
 	QUERY_state_hook_read, //eMessage_QUERY_state_hook_read
 	QUERY_state_hook_write, //eMessage_QUERY_state_hook_write
+	QUERY_state_hook_exec_smp, //eMessage_QUERY_state_hook_exec_smp
+	QUERY_state_hook_read_smp, //eMessage_QUERY_state_hook_read_smp
+	QUERY_state_hook_write_smp, //eMessage_QUERY_state_hook_write_smp
 	QUERY_state_hook_nmi, //eMessage_QUERY_state_hook_nmi
 	QUERY_state_hook_irq, //eMessage_QUERY_state_hook_irq
 	QUERY_state_enable_trace, //eMessage_QUERY_enable_trace TODO - consolidate enable flags
@@ -585,13 +623,13 @@ EXPORT void* DllInit()
 	T(buf, 88);
 	T(buf_size, 112);
 	T(cdl_ptr, 128);
-	T(cdl_size, 160);
-	T(cpuregs, 176);
-	T(layerEnables, 208);
-	T(region, 220);
-	T(mapper, 224);
+	T(cdl_size, 192);
+	T(cpuregs, 224);
+	T(layerEnables, 260);
+	T(region, 272);
+	T(mapper, 276);
 	// start of private stuff
-	T(privbuf, 232);
+	T(privbuf, 280);
 	#undef T
 
 	memset(&comm, 0, sizeof(comm));

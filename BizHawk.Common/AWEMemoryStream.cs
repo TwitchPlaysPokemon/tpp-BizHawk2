@@ -1,3 +1,5 @@
+#nullable disable
+
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -88,14 +90,11 @@ namespace BizHawk.Common
 		public override long Length { get { return mLength; } }
 		public override long Position
 		{
-			get
-			{
-				return mPosition;
-			}
+			get => mPosition;
 			set
 			{
 				if (!Ensure(value + 1))
-					throw new OutOfMemoryException("Couldn't set AWEMemoryStream to specified Position");
+					throw new OutOfMemoryException($"Couldn't set {nameof(AWEMemoryStream)} to specified Position");
 				mPosition = value;
 			}
 		}
@@ -128,7 +127,7 @@ namespace BizHawk.Common
 		public override void SetLength(long value)
 		{
 			if (!Ensure(value))
-				throw new OutOfMemoryException("Couldn't set AWEMemoryStream to specified Length");
+				throw new OutOfMemoryException($"Couldn't set {nameof(AWEMemoryStream)} to specified Length");
 			mLength = value;
 		}
 
@@ -151,7 +150,7 @@ namespace BizHawk.Common
 				{
 					mCurrBlock = block;
 					if (!mBlocks[block].Map(mWindow))
-						throw new Exception("Couldn't map required memory for AWEMemoryStream.Write");
+						throw new Exception($"Couldn't map required memory for {nameof(AWEMemoryStream)}.{nameof(AWEMemoryStream.Write)}");
 				}
 				Marshal.Copy(IntPtr.Add(mWindow, blockOfs), buffer, offset, todo);
 				count -= todo;
@@ -165,7 +164,7 @@ namespace BizHawk.Common
 		{
 			long end = mPosition + count;
 			if (!Ensure(end))
-				throw new OutOfMemoryException("Couldn't reserve required resources for AWEMemoryStream.Write");
+				throw new OutOfMemoryException($"Couldn't reserve required resources for {nameof(AWEMemoryStream)}.{nameof(AWEMemoryStream.Write)}");
 			SetLength(end);
 			while (count > 0)
 			{
@@ -181,7 +180,7 @@ namespace BizHawk.Common
 				{
 					mCurrBlock = block;
 					if (!mBlocks[block].Map(mWindow))
-						throw new Exception("Couldn't map required memory for AWEMemoryStream.Write");
+						throw new Exception($"Couldn't map required memory for {nameof(AWEMemoryStream)}.{nameof(AWEMemoryStream.Write)}");
 				}
 				Marshal.Copy(buffer, offset, IntPtr.Add(mWindow, blockOfs), todo);
 				count -= todo;
@@ -237,14 +236,14 @@ namespace BizHawk.Common
 
 				public uint LowPart
 				{
-					get { return lp; }
-					set { lp = value; }
+					get => lp;
+					set => lp = value;
 				}
 
 				public int HighPart
 				{
-					get { return hp; }
-					set { hp = value; }
+					get => hp;
+					set => hp = value;
 				}
 			}
 
@@ -256,14 +255,14 @@ namespace BizHawk.Common
 
 				public LUID LUID
 				{
-					get { return luid; }
-					set { luid = value; }
+					get => luid;
+					set => luid = value;
 				}
 
 				public uint Attributes
 				{
-					get { return attributes; }
-					set { attributes = value; }
+					get => attributes;
+					set => attributes = value;
 				}
 			}
 
@@ -276,14 +275,14 @@ namespace BizHawk.Common
 
 				public uint PrivilegeCount
 				{
-					get { return prvct; }
-					set { prvct = value; }
+					get => prvct;
+					set => prvct = value;
 				}
 
 				public LUID_AND_ATTRIBUTES[] Privileges
 				{
-					get { return privileges; }
-					set { privileges = value; }
+					get => privileges;
+					set => privileges = value;
 				}
 			}
 
@@ -383,6 +382,7 @@ namespace BizHawk.Common
 				}
 			}
 
+			/// <exception cref="InvalidOperationException"><paramref name="byteSize"/> is equivalent to more than <see cref="UInt32.MaxValue">uint.MaxValue</see> pages</exception>
 			public bool Allocate(int byteSize)
 			{
 				if (!TryAcquirePrivilege())

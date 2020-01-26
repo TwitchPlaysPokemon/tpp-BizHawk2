@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable disable
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -25,11 +27,6 @@ namespace BizHawk.Common
 			}
 
 			return caller.Method;
-		}
-
-		private static MethodInfo Method(Expression<Action> f)
-		{
-			return FromExpression(f.Body);
 		}
 
 		private static MethodInfo Method<T>(Expression<Action<T>> f)
@@ -75,25 +72,25 @@ namespace BizHawk.Common
 			AddW<sbyte>(r => r.Write((sbyte)0));
 
 			AddR<byte>(r => r.ReadByte());
-			AddW<byte>(r => r.Write((byte)0));
+			AddW<byte>(r => r.Write((byte)0U));
 
 			AddR<short>(r => r.ReadInt16());
 			AddW<short>(r => r.Write((short)0));
 
 			AddR<ushort>(r => r.ReadUInt16());
-			AddW<ushort>(r => r.Write((ushort)0));
+			AddW<ushort>(r => r.Write((ushort)0U));
 
 			AddR<int>(r => r.ReadInt32());
-			AddW<int>(r => r.Write((int)0));
+			AddW<int>(r => r.Write(0));
 
 			AddR<uint>(r => r.ReadUInt32());
-			AddW<uint>(r => r.Write((uint)0));
+			AddW<uint>(r => r.Write(0U));
 
 			AddR<long>(r => r.ReadInt64());
-			AddW<long>(r => r.Write((long)0));
+			AddW<long>(r => r.Write(0L));
 
 			AddR<ulong>(r => r.ReadUInt64());
-			AddW<ulong>(r => r.Write((ulong)0));
+			AddW<ulong>(r => r.Write(0UL));
 		}
 
 		#endregion
@@ -117,8 +114,8 @@ namespace BizHawk.Common
 				.OrderBy(fi => (int)Marshal.OffsetOf(t, fi.Name))
 				.ToList();
 
-			var rmeth = new DynamicMethod(t.Name + "_r", null, new[] { typeof(object), typeof(BinaryReader) }, true);
-			var wmeth = new DynamicMethod(t.Name + "_w", null, new[] { typeof(object), typeof(BinaryWriter) }, true);
+			var rmeth = new DynamicMethod($"{t.Name}_r", null, new[] { typeof(object), typeof(BinaryReader) }, true);
+			var wmeth = new DynamicMethod($"{t.Name}_w", null, new[] { typeof(object), typeof(BinaryWriter) }, true);
 
 			{
 				var il = rmeth.GetILGenerator();
@@ -134,7 +131,7 @@ namespace BizHawk.Common
 					MethodInfo m;
 					if (!Readhandlers.TryGetValue(field.FieldType, out m))
 					{
-						throw new InvalidOperationException("(R) Can't handle nested type " + field.FieldType);
+						throw new InvalidOperationException($"(R) Can't handle nested type {field.FieldType}");
 					}
 
 					il.Emit(OpCodes.Callvirt, m);
@@ -159,7 +156,7 @@ namespace BizHawk.Common
 					MethodInfo m;
 					if (!Writehandlers.TryGetValue(field.FieldType, out m))
 					{
-						throw new InvalidOperationException("(W) Can't handle nested type " + field.FieldType);
+						throw new InvalidOperationException($"(W) Can't handle nested type {field.FieldType}");
 					}
 
 					il.Emit(OpCodes.Callvirt, m);

@@ -29,17 +29,13 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TraceLogger));
 			this.TracerBox = new System.Windows.Forms.GroupBox();
-			this.TraceView = new BizHawk.Client.EmuHawk.VirtualListView();
-			this.Disasm = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-			this.Registers = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.TraceView = new InputRoll();
 			this.TraceContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.CopyContextMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.SelectAllContextMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.ClearContextMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.menuStrip1 = new MenuStripEx();
-			this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
 			this.FileSubMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.SaveLogMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
@@ -82,36 +78,18 @@
 			this.TraceView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.TraceView.BlazingFast = false;
-			this.TraceView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.Disasm,
-            this.Registers});
 			this.TraceView.ContextMenuStrip = this.TraceContextMenu;
 			this.TraceView.Font = new System.Drawing.Font("Courier New", 8F);
 			this.TraceView.FullRowSelect = true;
 			this.TraceView.GridLines = true;
-			this.TraceView.HideSelection = false;
-			this.TraceView.ItemCount = 0;
+			this.TraceView.RowCount = 0;
 			this.TraceView.Location = new System.Drawing.Point(8, 18);
 			this.TraceView.Name = "TraceView";
-			this.TraceView.SelectAllInProgress = false;
-			this.TraceView.selectedItem = -1;
 			this.TraceView.Size = new System.Drawing.Size(603, 414);
 			this.TraceView.TabIndex = 4;
 			this.TraceView.TabStop = false;
-			this.TraceView.UseCompatibleStateImageBehavior = false;
-			this.TraceView.UseCustomBackground = true;
-			this.TraceView.View = System.Windows.Forms.View.Details;
-			// 
-			// Disasm
-			// 
-			this.Disasm.Text = "Disasm";
-			this.Disasm.Width = 239;
-			// 
-			// Registers
-			// 
-			this.Registers.Text = "Registers";
-			this.Registers.Width = 357;
+			this.TraceView.AllowColumnResize = true;
+			this.TraceView.AllowColumnReorder = false;
 			// 
 			// TraceContextMenu
 			// 
@@ -149,7 +127,6 @@
 			// 
 			this.menuStrip1.ClickThrough = true;
 			this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripMenuItem1,
             this.FileSubMenu,
             this.EditSubMenu,
             this.OptionsSubMenu});
@@ -158,11 +135,6 @@
 			this.menuStrip1.Size = new System.Drawing.Size(644, 24);
 			this.menuStrip1.TabIndex = 2;
 			this.menuStrip1.Text = "menuStrip1";
-			// 
-			// toolStripMenuItem1
-			// 
-			this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-			this.toolStripMenuItem1.Size = new System.Drawing.Size(12, 20);
 			// 
 			// FileSubMenu
 			// 
@@ -348,7 +320,7 @@
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.TracerBox);
 			this.Controls.Add(this.menuStrip1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+			this.Icon = global::BizHawk.Client.EmuHawk.Properties.Resources.pencil_MultiSize;
 			this.KeyPreview = true;
 			this.MainMenuStrip = this.menuStrip1;
 			this.MinimumSize = new System.Drawing.Size(400, 230);
@@ -371,7 +343,6 @@
 
 		private System.Windows.Forms.GroupBox TracerBox;
 		private MenuStripEx menuStrip1;
-		private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem1;
 		private System.Windows.Forms.ToolStripMenuItem FileSubMenu;
 		private System.Windows.Forms.ToolStripMenuItem SaveLogMenuItem;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
@@ -379,8 +350,7 @@
 		private System.Windows.Forms.GroupBox groupBox2;
 		private System.Windows.Forms.CheckBox LoggingEnabled;
 		private System.Windows.Forms.ToolStripMenuItem OptionsSubMenu;
-		private VirtualListView TraceView;
-		public System.Windows.Forms.ColumnHeader Disasm;
+		private InputRoll TraceView;
 		private System.Windows.Forms.ToolStripMenuItem MaxLinesMenuItem;
 		private System.Windows.Forms.RadioButton ToFileRadio;
 		private System.Windows.Forms.RadioButton ToWindowRadio;
@@ -389,7 +359,6 @@
 		private System.Windows.Forms.ToolStripMenuItem EditSubMenu;
 		private System.Windows.Forms.ToolStripMenuItem CopyMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem SelectAllMenuItem;
-		private System.Windows.Forms.ColumnHeader Registers;
 		private System.Windows.Forms.ToolStripMenuItem ClearMenuItem;
 		private System.Windows.Forms.ContextMenuStrip TraceContextMenu;
 		private System.Windows.Forms.ToolStripMenuItem CopyContextMenu;

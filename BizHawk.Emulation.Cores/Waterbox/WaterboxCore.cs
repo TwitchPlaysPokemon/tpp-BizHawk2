@@ -1,5 +1,5 @@
 ﻿using BizHawk.Common;
-using BizHawk.Common.BizInvoke;
+using BizHawk.BizInvoke;
 using BizHawk.Common.BufferExtensions;
 using BizHawk.Emulation.Common;
 using System;
@@ -191,7 +191,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 		protected virtual void FrameAdvancePost()
 		{ }
 
-		public unsafe void FrameAdvance(IController controller, bool render, bool rendersound = true)
+		public unsafe bool FrameAdvance(IController controller, bool render, bool rendersound = true)
 		{
 			using (_exe.EnterExit())
 			{
@@ -218,6 +218,8 @@ namespace BizHawk.Emulation.Cores.Waterbox
 					FrameAdvancePost();
 				}
 			}
+
+			return true;
 		}
 
 		private bool _disposed = false;
@@ -301,8 +303,8 @@ namespace BizHawk.Emulation.Cores.Waterbox
 
 		public byte[] SaveStateBinary()
 		{
-			var ms = new MemoryStream();
-			var bw = new BinaryWriter(ms);
+			using var ms = new MemoryStream();
+			using var bw = new BinaryWriter(ms);
 			SaveStateBinary(bw);
 			bw.Flush();
 			ms.Close();
@@ -314,7 +316,6 @@ namespace BizHawk.Emulation.Cores.Waterbox
 		/// variables that it needs to.
 		/// the default implementation does nothing
 		/// </summary>
-		/// <param name="writer"></param>
 		protected virtual void SaveStateBinaryInternal(BinaryWriter writer)
 		{
 
@@ -325,7 +326,6 @@ namespace BizHawk.Emulation.Cores.Waterbox
 		/// that were in SaveStateBinaryInternal and reset any native pointers.
 		/// the default implementation does nothing
 		/// </summary>
-		/// <param name="reader"></param>
 		protected virtual void LoadStateBinaryInternal(BinaryReader reader)
 		{
 

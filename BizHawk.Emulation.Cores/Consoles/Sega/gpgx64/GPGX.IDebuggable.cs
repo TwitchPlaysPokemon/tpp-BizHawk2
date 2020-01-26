@@ -36,10 +36,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			throw new NotImplementedException();
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks
-		{
-			get { return _memoryCallbacks; }
-		}
+		public IMemoryCallbackSystem MemoryCallbacks => _memoryCallbacks;
 
 		public bool CanStep(StepType type) { return false; }
 
@@ -47,12 +44,9 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 		public void Step(StepType type) { throw new NotImplementedException(); }
 
 		[FeatureNotImplemented]
-		public int TotalExecutedCycles
-		{
-			get { throw new NotImplementedException(); }
-		}
+		public long TotalExecutedCycles => throw new NotImplementedException();
 
-		private readonly MemoryCallbackSystem _memoryCallbacks = new MemoryCallbackSystem();
+		private readonly MemoryCallbackSystem _memoryCallbacks = new MemoryCallbackSystem(new[] { "M68K BUS" });
 
 		private LibGPGX.mem_cb ExecCallback;
 		private LibGPGX.mem_cb ReadCallback;
@@ -61,9 +55,21 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 
 		private void InitMemCallbacks()
 		{
-			ExecCallback = new LibGPGX.mem_cb(a => MemoryCallbacks.CallExecutes(a));
-			ReadCallback = new LibGPGX.mem_cb(a => MemoryCallbacks.CallReads(a));
-			WriteCallback = new LibGPGX.mem_cb(a => MemoryCallbacks.CallWrites(a));
+			ExecCallback = new LibGPGX.mem_cb(a =>
+			{
+				uint flags = (uint)(MemoryCallbackFlags.AccessExecute);
+				MemoryCallbacks.CallMemoryCallbacks(a, 0, flags, "M68K BUS");
+			});
+			ReadCallback = new LibGPGX.mem_cb(a =>
+			{
+				uint flags = (uint)(MemoryCallbackFlags.AccessRead);
+				MemoryCallbacks.CallMemoryCallbacks(a, 0, flags, "M68K BUS");
+			});
+			WriteCallback = new LibGPGX.mem_cb(a =>
+			{
+				uint flags = (uint)(MemoryCallbackFlags.AccessWrite);
+				MemoryCallbacks.CallMemoryCallbacks(a, 0, flags, "M68K BUS");
+			});
 			_memoryCallbacks.ActiveChanged += RefreshMemCallbacks;
 		}
 

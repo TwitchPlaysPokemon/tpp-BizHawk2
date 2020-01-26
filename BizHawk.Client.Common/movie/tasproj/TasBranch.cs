@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Newtonsoft.Json;
 using BizHawk.Bizware.BizwareGL;
 
@@ -12,8 +11,8 @@ namespace BizHawk.Client.Common
 		public int Frame { get; set; }
 		public byte[] CoreData { get; set; }
 		public IStringLog InputLog { get; set; }
+		public BitmapBuffer CoreFrameBuffer { get; set; }
 		public BitmapBuffer OSDFrameBuffer { get; set; }
-		public TasLagLog LagLog { get; set; }
 		public TasMovieChangeLog ChangeLog { get; set; }
 		public DateTime TimeStamp { get; set; }
 		public TasMovieMarkerList Markers { get; set; }
@@ -32,13 +31,7 @@ namespace BizHawk.Client.Common
 		{
 			if (item.UniqueIdentifier == Guid.Empty)
 			{
-				var currentHashes = this.Select(b => b.UniqueIdentifier.GetHashCode()).ToList();
-
-				do
-				{
-					item.UniqueIdentifier = Guid.NewGuid();
-				}
-				while (currentHashes.Contains(item.UniqueIdentifier.GetHashCode()));
+				item.UniqueIdentifier = Guid.NewGuid();
 			}
 
 			base.Add(item);
@@ -50,7 +43,7 @@ namespace BizHawk.Client.Common
 			var ncore = new IndexedStateLump(BinaryStateLump.BranchCoreData);
 			var ninput = new IndexedStateLump(BinaryStateLump.BranchInputLog);
 			var nframebuffer = new IndexedStateLump(BinaryStateLump.BranchFrameBuffer);
-			var nlaglog = new IndexedStateLump(BinaryStateLump.BranchLagLog);
+			var ncoreframebuffer = new IndexedStateLump(BinaryStateLump.BranchCoreFrameBuffer);
 			var nmarkers = new IndexedStateLump(BinaryStateLump.BranchMarkers);
 			var nusertext = new IndexedStateLump(BinaryStateLump.BranchUserText);
 			foreach (var b in this)
@@ -86,9 +79,10 @@ namespace BizHawk.Client.Common
 					QuickBmpFile.Save(vp, s, b.OSDFrameBuffer.Width, b.OSDFrameBuffer.Height);
 				});
 
-				bs.PutLump(nlaglog, delegate(BinaryWriter bw)
+				bs.PutLump(ncoreframebuffer, delegate(Stream s)
 				{
-					b.LagLog.Save(bw);
+					var vp = new BitmapBufferVideoProvider(b.CoreFrameBuffer);
+					QuickBmpFile.Save(vp, s, b.CoreFrameBuffer.Width, b.CoreFrameBuffer.Height);
 				});
 
 				bs.PutLump(nmarkers, delegate(TextWriter tw)
@@ -105,7 +99,7 @@ namespace BizHawk.Client.Common
 				ncore.Increment();
 				ninput.Increment();
 				nframebuffer.Increment();
-				nlaglog.Increment();
+				ncoreframebuffer.Increment();
 				nmarkers.Increment();
 				nusertext.Increment();
 			}
@@ -117,7 +111,7 @@ namespace BizHawk.Client.Common
 			var ncore = new IndexedStateLump(BinaryStateLump.BranchCoreData);
 			var ninput = new IndexedStateLump(BinaryStateLump.BranchInputLog);
 			var nframebuffer = new IndexedStateLump(BinaryStateLump.BranchFrameBuffer);
-			var nlaglog = new IndexedStateLump(BinaryStateLump.BranchLagLog);
+			var ncoreframebuffer = new IndexedStateLump(BinaryStateLump.BranchCoreFrameBuffer);
 			var nmarkers = new IndexedStateLump(BinaryStateLump.BranchMarkers);
 			var nusertext = new IndexedStateLump(BinaryStateLump.BranchUserText);
 
@@ -180,10 +174,11 @@ namespace BizHawk.Client.Common
 					b.OSDFrameBuffer = new BitmapBuffer(vp.BufferWidth, vp.BufferHeight, vp.VideoBuffer);
 				});
 
-				bl.GetLump(nlaglog, true, delegate(BinaryReader br)
+				bl.GetLump(ncoreframebuffer, false, delegate(Stream s, long length)
 				{
-					b.LagLog = new TasLagLog();
-					b.LagLog.Load(br);
+					var vp = new QuickBmpFile.LoadedBMP();
+					QuickBmpFile.Load(vp, s);
+					b.CoreFrameBuffer = new BitmapBuffer(vp.BufferWidth, vp.BufferHeight, vp.VideoBuffer);
 				});
 
 				b.Markers = new TasMovieMarkerList(movie);
@@ -217,7 +212,7 @@ namespace BizHawk.Client.Common
 				ncore.Increment();
 				ninput.Increment();
 				nframebuffer.Increment();
-				nlaglog.Increment();
+				ncoreframebuffer.Increment();
 				nmarkers.Increment();
 				nusertext.Increment();
 			}

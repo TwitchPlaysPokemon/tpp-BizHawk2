@@ -3,6 +3,7 @@ using System.Linq;
 using System.IO;
 using System.Reflection;
 
+using BizHawk.Common;
 using BizHawk.Common.StringExtensions;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
@@ -13,6 +14,11 @@ namespace BizHawk.Client.Common
 {
 	public static class PathManager
 	{
+		static PathManager()
+		{
+			SetDefaultIniPath(MakeProgramRelativePath("config.ini"));
+		}
+
 		public static string GetExeDirectoryAbsolute()
 		{
 			var path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
@@ -29,7 +35,7 @@ namespace BizHawk.Client.Common
 		/// </summary>
 		public static string MakeProgramRelativePath(string path)
 		{
-			return MakeAbsolutePath("%exe%/" + path, null);
+			return MakeAbsolutePath($"%exe%/{path}", null);
 		}
 
 		public static string GetDllDirectory()
@@ -40,7 +46,12 @@ namespace BizHawk.Client.Common
 		/// <summary>
 		/// The location of the default INI file
 		/// </summary>
-		public static string DefaultIniPath => MakeProgramRelativePath("config.ini");
+		public static string DefaultIniPath { get; private set; }
+
+		public static void SetDefaultIniPath(string newDefaultIniPath)
+		{
+			DefaultIniPath = newDefaultIniPath;
+		}
 
 		/// <summary>
 		/// Gets absolute base as derived from EXE
@@ -100,17 +111,10 @@ namespace BizHawk.Client.Common
 				return Environment.SpecialFolder.Recent.ToString();
 			}
 
-			if (path.Length >= 5 && path.Substring(0, 5) == "%exe%")
-			{
-				if (path.Length == 5)
-				{
-					return GetExeDirectoryAbsolute();
-				}
-
-				var tmp = path.Remove(0, 5);
-				tmp = tmp.Insert(0, GetExeDirectoryAbsolute());
-				return tmp;
-			}
+			if (path.StartsWith("%exe%"))
+				return GetExeDirectoryAbsolute() + path.Substring(5);
+			if (path.StartsWith("%rom%"))
+				return Global.Config.LastRomPath + path.Substring(5);
 
 			if (path[0] == '.')
 			{
@@ -140,7 +144,7 @@ namespace BizHawk.Client.Common
 			//handling of initial .. was removed (Path.GetFullPath can handle it)
 			//handling of file:// or file:\\ was removed  (can Path.GetFullPath handle it? not sure)
 
-			// all pad paths default to EXE
+			// all bad paths default to EXE
 			return GetExeDirectoryAbsolute();
 		}
 
@@ -199,7 +203,7 @@ namespace BizHawk.Client.Common
 
 		public static string GetRomsPath(string sysId)
 		{
-			if (Global.Config.UseRecentForROMs)
+			if (Global.Config.UseRecentForRoms)
 			{
 				return Environment.SpecialFolder.Recent.ToString();
 			}
@@ -231,7 +235,8 @@ namespace BizHawk.Client.Common
 			var filesystemSafeName = game.Name
 				.Replace("|", "+")
 				.Replace(":", " -") // adelikat - Path.GetFileName scraps everything to the left of a colon unfortunately, so we need this hack here
-				.Replace("\"", ""); // adelikat - Ivan Ironman Stewart's Super Off-Road has quotes in game name
+				.Replace("\"", "")  // adelikat - Ivan Ironman Stewart's Super Off-Road has quotes in game name
+				.Replace("/", "+"); // Narry - Mario Bros / Duck hunt has a slash in the name which GetDirectoryName and GetFileName treat as if it were a folder
 
 			// zero 06-nov-2015 - regarding the below, i changed my mind. for libretro i want subdirectories here.
 			var filesystemDir = Path.GetDirectoryName(filesystemSafeName);
@@ -256,15 +261,15 @@ namespace BizHawk.Client.Common
 		public static string SaveRamPath(GameInfo game)
 		{
 			var name = FilesystemSafeName(game);
-			if (Global.MovieSession.Movie.IsActive)
+			if (Global.MovieSession.Movie.IsActive())
 			{
-				name += "." + Path.GetFileNameWithoutExtension(Global.MovieSession.Movie.Filename);
+				name += $".{Path.GetFileNameWithoutExtension(Global.MovieSession.Movie.Filename)}";
 			}
 
 			var pathEntry = Global.Config.PathEntries[game.System, "Save RAM"] ??
 							Global.Config.PathEntries[game.System, "Base"];
 
-			return Path.Combine(MakeAbsolutePath(pathEntry.Path, game.System), name) + ".SaveRAM";
+			return $"{Path.Combine(MakeAbsolutePath(pathEntry.Path, game.System), name)}.SaveRAM";
 		}
 		
 		public static string AutoSaveRamPath(GameInfo game)
@@ -283,9 +288,9 @@ namespace BizHawk.Client.Common
 				name = FilesystemSafeName(game);
 			}
 
-			if (Global.MovieSession.Movie.IsActive)
+			if (Global.MovieSession.Movie.IsActive())
 			{
-				name = Path.Combine(name, "movie-" + Path.GetFileNameWithoutExtension(Global.MovieSession.Movie.Filename));
+				name = Path.Combine(name, $"movie-{Path.GetFileNameWithoutExtension(Global.MovieSession.Movie.Filename)}");
 			}
 
 			var pathEntry = Global.Config.PathEntries[game.System, "Save RAM"] ??
@@ -333,28 +338,34 @@ namespace BizHawk.Client.Common
 			// Neshawk and Quicknes have incompatible savestates, store the name to keep them separate
 			if (Global.Emulator.SystemId == "NES")
 			{
-				name += "." + Global.Emulator.Attributes().CoreName;
+				name += $".{Global.Emulator.Attributes().CoreName}";
+			}
+
+			// Gambatte and GBHawk have incompatible savestates, store the name to keep them separate
+			if (Global.Emulator.SystemId == "GB")
+			{
+				name += $".{Global.Emulator.Attributes().CoreName}";
 			}
 
 			if (Global.Emulator is Snes9x) // Keep snes9x savestate away from libsnes, we want to not be too tedious so bsnes names will just have the profile name not the core name
 			{
-				name += "." + Global.Emulator.Attributes().CoreName;
+				name += $".{Global.Emulator.Attributes().CoreName}";
 			}
 
 			// Bsnes profiles have incompatible savestates so save the profile name
 			if (Global.Emulator is LibsnesCore)
 			{
-				name += "." + (Global.Emulator as LibsnesCore).CurrentProfile;
+				name += $".{((LibsnesCore)Global.Emulator).CurrentProfile}";
 			}
 
 			if (Global.Emulator.SystemId == "GBA")
 			{
-				name += "." + Global.Emulator.Attributes().CoreName;
+				name += $".{Global.Emulator.Attributes().CoreName}";
 			}
 
-			if (Global.MovieSession.Movie.IsActive)
+			if (Global.MovieSession.Movie.IsActive())
 			{
-				name += "." + Path.GetFileNameWithoutExtension(Global.MovieSession.Movie.Filename);
+				name += $".{Path.GetFileNameWithoutExtension(Global.MovieSession.Movie.Filename)}";
 			}
 
 			var pathEntry = Global.Config.PathEntries[game.System, "Savestates"] ??
@@ -393,16 +404,25 @@ namespace BizHawk.Client.Common
 		/// </summary>
 		public static string TryMakeRelative(string absolutePath, string system = null)
 		{
-			var parentPath = string.IsNullOrWhiteSpace(system) ?
-				GetGlobalBasePathAbsolute() :
-				MakeAbsolutePath(GetPlatformBase(system), system);
+			var parentPath = string.IsNullOrWhiteSpace(system)
+				? GetGlobalBasePathAbsolute()
+				: MakeAbsolutePath(GetPlatformBase(system), system);
+#if true
+			if (!IsSubfolder(parentPath, absolutePath)) return absolutePath;
 
-			if (IsSubfolder(parentPath, absolutePath))
+			return OSTailoredCode.IsUnixHost
+				? "./" + OSTailoredCode.SimpleSubshell("realpath", $"--relative-to=\"{parentPath}\" \"{absolutePath}\"", $"invalid path {absolutePath} or missing realpath binary")
+				: absolutePath.Replace(parentPath, ".");
+#else // written for Unix port but may be useful for .NET Core
+			if (!IsSubfolder(parentPath, absolutePath))
 			{
-				return absolutePath.Replace(parentPath, ".");
+				return OSTailoredCode.IsUnixHost && parentPath.TrimEnd('.') == $"{absolutePath}/" ? "." : absolutePath;
 			}
 
-			return absolutePath;
+			return OSTailoredCode.IsUnixHost
+				? absolutePath.Replace(parentPath.TrimEnd('.'), "./")
+				: absolutePath.Replace(parentPath, ".");
+#endif
 		}
 
 		public static string MakeRelativeTo(string absolutePath, string basePath)
@@ -415,23 +435,35 @@ namespace BizHawk.Client.Common
 			return absolutePath;
 		}
 
-		// http://stackoverflow.com/questions/3525775/how-to-check-if-directory-1-is-a-subdirectory-of-dir2-and-vice-versa
-		private static bool IsSubfolder(string parentPath, string childPath)
+		/// <remarks>Algorithm for Windows taken from https://stackoverflow.com/a/7710620/7467292</remarks>
+		public static bool IsSubfolder(string parentPath, string childPath)
 		{
-			var parentUri = new Uri(parentPath);
-
-			var childUri = new DirectoryInfo(childPath).Parent;
-
-			while (childUri != null)
+			if (OSTailoredCode.IsUnixHost)
 			{
-				if (new Uri(childUri.FullName) == parentUri)
+#if true
+				return OSTailoredCode.SimpleSubshell("realpath", $"-L \"{childPath}\"", $"invalid path {childPath} or missing realpath binary")
+					.StartsWith(OSTailoredCode.SimpleSubshell("realpath", $"-L \"{parentPath}\"", $"invalid path {parentPath} or missing realpath binary"));
+#else // written for Unix port but may be useful for Windows when moving to .NET Core
+				var parentUriPath = new Uri(parentPath.TrimEnd('.')).AbsolutePath.TrimEnd('/');
+				try
 				{
-					return true;
+					for (var childUri = new DirectoryInfo(childPath).Parent; childUri != null; childUri = childUri?.Parent)
+					{
+						if (new Uri(childUri.FullName).AbsolutePath.TrimEnd('/') == parentUriPath) return true;
+					}
 				}
-
-				childUri = childUri.Parent;
+				catch
+				{
+					// ignored
+				}
+				return false;
+#endif
 			}
-
+			var parentUri = new Uri(parentPath);
+			for (var childUri = new DirectoryInfo(childPath).Parent; childUri != null; childUri = childUri?.Parent)
+			{
+				if (new Uri(childUri.FullName) == parentUri) return true;
+			}
 			return false;
 		}
 
@@ -454,5 +486,19 @@ namespace BizHawk.Client.Common
 
 			return entry;
 		}
+
+		/// <summary>
+		/// Puts the currently configured temp path into the environment for use as actual temp directory
+		/// </summary>
+		public static void RefreshTempPath()
+		{
+			if (Global.Config.PathEntries.TempFilesFragment != "")
+			{
+				//TODO - BUG - needs to route through PathManager.MakeAbsolutePath or something similar, but how?
+				string target = Global.Config.PathEntries.TempFilesFragment;
+				BizHawk.Common.TempFileManager.HelperSetTempPath(target);
+			}
+		}
 	}
+
 }

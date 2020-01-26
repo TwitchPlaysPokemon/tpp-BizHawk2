@@ -9,6 +9,15 @@ namespace BizHawk.Client.Common
 {
 	public class Bk2ControllerAdapter : IMovieController
 	{
+		private class ControlMap
+		{
+			public string Name { get; set; }
+			public bool IsBool { get; set; }
+			public bool IsFloat { get; set; }
+		}
+
+		private List<ControlMap> _controlsOrdered = new List<ControlMap>();
+
 		private readonly string _logKey = "";
 		private readonly WorkingDictionary<string, bool> _myBoolButtons = new WorkingDictionary<string, bool>();
 		private readonly WorkingDictionary<string, float> _myFloatControls = new WorkingDictionary<string, float>();
@@ -36,14 +45,10 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		// TODO: get rid of this, add a SetBool() method or something for the set access, replace get wtih IsPressed
+		// TODO: get rid of this, add a SetBool() method or something for the set access, replace get with IsPressed
 		public bool this[string button]
 		{
-			get
-			{
-				return _myBoolButtons[button];
-			}
-
+			get => _myBoolButtons[button];
 			set
 			{
 				if (_myBoolButtons.ContainsKey(button))
@@ -73,15 +78,22 @@ namespace BizHawk.Client.Common
 
 		public ControllerDefinition Definition
 		{
-			get
-			{
-				return _type;
-			}
-
+			get => _type;
 			set
 			{
 				_type = new Bk2ControllerDefinition(value);
 				SetLogOverride();
+
+				var def = Global.Emulator.ControllerDefinition;
+				_controlsOrdered =  Definition.ControlsOrdered
+					.SelectMany(c => c)
+					.Select(c => new ControlMap
+					{
+						Name = c,
+						IsBool = def.BoolButtons.Contains(c),
+						IsFloat = def.FloatControls.Contains(c)
+					})
+					.ToList();
 			}
 		}
 
@@ -143,6 +155,12 @@ namespace BizHawk.Client.Common
 			{
 				_myBoolButtons[button] = Global.AutofireStickyXORAdapter.IsSticky(button);
 			}
+
+			// float controls don't have sticky logic, so latch default value
+			for (int i = 0; i < Definition.FloatControls.Count; i++)
+			{
+				_myFloatControls[Definition.FloatControls[i]] = Definition.FloatRanges[i].Mid;
+			}
 		}
 
 		/// <summary>
@@ -152,25 +170,24 @@ namespace BizHawk.Client.Common
 		{
 			if (!string.IsNullOrWhiteSpace(mnemonic))
 			{
-				var def = Global.Emulator.ControllerDefinition;
 				var trimmed = mnemonic.Replace("|", "");
-				var buttons = Definition.ControlsOrdered.SelectMany(c => c).ToList();
 				var iterator = 0;
 
-				foreach (var key in buttons)
+				foreach (var key in _controlsOrdered)
 				{
-					if (def.BoolButtons.Contains(key))
+					if (key.IsBool)
 					{
-						_myBoolButtons[key] = trimmed[iterator] != '.';
+						_myBoolButtons[key.Name] = trimmed[iterator] != '.';
 						iterator++;
 					}
-					else if (def.FloatControls.Contains(key))
+					else if (key.IsFloat)
 					{
-						var temp = trimmed.Substring(iterator, 5);
+						var commaIndex = trimmed.Substring(iterator).IndexOf(',');
+						var temp = trimmed.Substring(iterator, commaIndex);
 						var val = int.Parse(temp.Trim());
-						_myFloatControls[key] = val;
+						_myFloatControls[key.Name] = val;
 
-						iterator += 6;
+						iterator += commaIndex + 1;
 					}
 				}
 			}
@@ -196,18 +213,10 @@ namespace BizHawk.Client.Common
 
 			public List<List<string>> ControlsFromLog { private get; set; } = new List<List<string>>();
 
-			public override IEnumerable<IEnumerable<string>> ControlsOrdered
-			{
-				get
-				{
-					if (ControlsFromLog.Any())
-					{
-						return ControlsFromLog;
-					}
-
-					return base.ControlsOrdered;
-				}
-			}
+			public override IEnumerable<IEnumerable<string>> ControlsOrdered =>
+				ControlsFromLog.Any()
+					? ControlsFromLog
+					: base.ControlsOrdered;
 		}
 	}
 }

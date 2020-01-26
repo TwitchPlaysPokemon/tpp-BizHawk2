@@ -216,7 +216,6 @@ namespace BizHawk.Emulation.Common
 			/// Get the latency in input samples introduced by the resampler.
 			/// </summary>
 			/// <param name="st">Resampler state</param>
-			/// <returns></returns>
 			[DllImport("libspeexdsp.dll", CallingConvention = CallingConvention.Cdecl)]
 			public static extern int speex_resampler_get_input_latency(IntPtr st);
 
@@ -224,7 +223,6 @@ namespace BizHawk.Emulation.Common
 			/// Get the latency in output samples introduced by the resampler.
 			/// </summary>
 			/// <param name="st">Resampler state</param>
-			/// <returns></returns>
 			[DllImport("libspeexdsp.dll", CallingConvention = CallingConvention.Cdecl)]
 			public static extern int speex_resampler_get_output_latency(IntPtr st);
 
@@ -280,19 +278,16 @@ namespace BizHawk.Emulation.Common
 				case LibSpeexDSP.RESAMPLER_ERR.SUCCESS:
 					return;
 				case LibSpeexDSP.RESAMPLER_ERR.ALLOC_FAILED:
-					throw new InsufficientMemoryException("LibSpeexDSP: Alloc failed");
+					throw new InsufficientMemoryException($"{nameof(LibSpeexDSP)}: Alloc failed");
 				case LibSpeexDSP.RESAMPLER_ERR.BAD_STATE:
-					throw new Exception("LibSpeexDSP: Bad state");
+					throw new Exception($"{nameof(LibSpeexDSP)}: Bad state");
 				case LibSpeexDSP.RESAMPLER_ERR.INVALID_ARG:
-					throw new ArgumentException("LibSpeexDSP: Bad Argument");
+					throw new ArgumentException($"{nameof(LibSpeexDSP)}: Bad Argument");
 				case LibSpeexDSP.RESAMPLER_ERR.PTR_OVERLAP:
-					throw new Exception("LibSpeexDSP: Buffers cannot overlap");
+					throw new Exception($"{nameof(LibSpeexDSP)}: Buffers cannot overlap");
 			}
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="SpeexResampler"/> class
-		/// </summary>
 		/// <param name="quality">0 to 10</param>
 		/// <param name="rationum">numerator of sample rate change ratio (inrate / outrate)</param>
 		/// <param name="ratioden">denominator of sample rate change ratio (inrate / outrate)</param>
@@ -300,11 +295,13 @@ namespace BizHawk.Emulation.Common
 		/// <param name="srateout">sampling rate out, rounded to nearest hz</param>
 		/// <param name="drainer">function which accepts output as produced. if null, act as an <seealso cref="ISoundProvider"/></param>
 		/// <param name="input">source to take input from when output is requested. if null, no auto-fetching</param>
+		/// <exception cref="ArgumentException"><paramref name="drainer"/> and <paramref name="input"/> are both non-null</exception>
+		/// <exception cref="Exception">unmanaged call failed</exception>
 		public SpeexResampler(Quality quality, uint rationum, uint ratioden, uint sratein, uint srateout, Action<short[], int> drainer = null, ISoundProvider input = null)
 		{
 			if (drainer != null && input != null)
 			{
-				throw new ArgumentException("Can't autofetch without being an ISyncSoundProvider?");
+				throw new ArgumentException($"Can't autofetch without being an {nameof(ISoundProvider)}?");
 			}
 
 			LibSpeexDSP.RESAMPLER_ERR err = LibSpeexDSP.RESAMPLER_ERR.SUCCESS;
@@ -312,7 +309,7 @@ namespace BizHawk.Emulation.Common
 
 			if (_st == IntPtr.Zero)
 			{
-				throw new Exception("LibSpeexDSP returned null!");
+				throw new Exception($"{nameof(LibSpeexDSP)} returned null!");
 			}
 
 			CheckError(err);
@@ -371,9 +368,8 @@ namespace BizHawk.Emulation.Common
 			}
 		}
 
-		/// <summary>
-		/// flush as many input samples as possible, generating output samples right now
-		/// </summary>
+		/// <summary>flush as many input samples as possible, generating output samples right now</summary>
+		/// <exception cref="Exception">unmanaged call failed</exception>
 		public void Flush()
 		{
 			uint inal = (uint)_inbufpos / 2;
@@ -450,11 +446,13 @@ namespace BizHawk.Emulation.Common
 
 		public SyncSoundMode SyncMode => SyncSoundMode.Sync;
 
+		/// <exception cref="InvalidOperationException">always</exception>
 		public void GetSamplesAsync(short[] samples)
 		{
 			throw new InvalidOperationException("Async mode is not supported.");
 		}
 
+		/// <exception cref="NotSupportedException"><paramref name="mode"/> is <see cref="SyncSoundMode.Async"/></exception>
 		public void SetSyncMode(SyncSoundMode mode)
 		{
 			if (mode == SyncSoundMode.Async)

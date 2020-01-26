@@ -189,12 +189,11 @@
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.textBox1);
 			this.Controls.Add(this.menuStrip1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+			this.Icon = global::BizHawk.Client.EmuHawk.Properties.Resources.NESControllerIcon_MultiSize;
 			this.Name = "NESMusicRipper";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
 			this.Text = "Music Ripper";
 			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.NESMusicRipper_FormClosed);
-			this.Load += new System.EventHandler(this.NESMusicRipper_Load);
 			this.groupBox1.ResumeLayout(false);
 			this.groupBox1.PerformLayout();
 			this.groupBox2.ResumeLayout(false);

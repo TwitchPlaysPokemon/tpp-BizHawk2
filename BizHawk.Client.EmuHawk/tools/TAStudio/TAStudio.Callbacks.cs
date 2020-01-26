@@ -11,25 +11,28 @@ namespace BizHawk.Client.EmuHawk
 		public Func<int, string, Bitmap> QueryItemIconCallback { get; set; }
 
 		public Action<int> GreenzoneInvalidatedCallback { get; set; }
-
-		private Color? GetColorOverride(int index, InputRoll.RollColumn column)
-		{
-			return QueryItemBgColorCallback?.Invoke(index, column.Name);
-		}
-
-		private string GetTextOverride(int index, InputRoll.RollColumn column)
-		{
-			return QueryItemTextCallback?.Invoke(index, column.Name);
-		}
-
-		private Bitmap GetIconOverride(int index, InputRoll.RollColumn column)
-		{
-			return QueryItemIconCallback?.Invoke(index, column.Name);
-		}
+		public Action<int> BranchLoadedCallback { get; set; }
+		public Action<int> BranchSavedCallback { get; set; }
+		public Action<int> BranchRemovedCallback { get; set; }
 
 		private void GreenzoneInvalidated(int index)
 		{
 			GreenzoneInvalidatedCallback?.Invoke(index);
+		}
+
+		private void BranchLoaded(int index)
+		{
+			BranchLoadedCallback?.Invoke(index);
+		}
+
+		private void BranchSaved(int index)
+		{
+			BranchSavedCallback?.Invoke(index);
+		}
+
+		private void BranchRemoved(int index)
+		{
+			BranchRemovedCallback?.Invoke(index);
 		}
 	}
 }

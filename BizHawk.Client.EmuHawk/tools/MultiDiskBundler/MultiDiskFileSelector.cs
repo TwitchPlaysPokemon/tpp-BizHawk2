@@ -1,43 +1,42 @@
 ﻿using System;
 using System.Windows.Forms;
 
+using BizHawk.Common;
 using BizHawk.Client.Common;
 using BizHawk.Client.EmuHawk.WinFormExtensions;
+using System.IO;
 
 namespace BizHawk.Client.EmuHawk
 {
 	public partial class MultiDiskFileSelector : UserControl
 	{
-		public string GetName()
-		{
-			return PathBox.Text;
-		}
+		private readonly ToolFormBase _parent;
 
-		public void SetName(string val)
+		public string SystemString { get; set; } = "";
+
+		public string Path
 		{
-			PathBox.Text = val;
+			get => PathBox.Text;
+			set => PathBox.Text = value;
 		}
 
 		public event EventHandler NameChanged;
 
 		private void HandleLabelTextChanged(object sender, EventArgs e)
 		{
-			this.OnNameChanged(EventArgs.Empty);
+			OnNameChanged(EventArgs.Empty);
 		}
 
-		public MultiDiskFileSelector()
+		public MultiDiskFileSelector(ToolFormBase parent)
 		{
+			_parent = parent;
 			InitializeComponent();
-			PathBox.TextChanged += this.HandleLabelTextChanged;
+			PathBox.TextChanged += HandleLabelTextChanged;
 		}
 
 		protected virtual void OnNameChanged(EventArgs e)
 		{
-			EventHandler handler = this.NameChanged;
-			if (handler != null)
-			{
-				handler(this, e);
-			}
+			NameChanged?.Invoke(this, e);
 		}
 
 		private void PathBox_DragEnter(object sender, DragEventArgs e)
@@ -67,24 +66,65 @@ namespace BizHawk.Client.EmuHawk
 
 		private void BrowseButton_Click(object sender, EventArgs e)
 		{
-			using (var ofd = new OpenFileDialog
+			using var ofd = new OpenFileDialog
 			{
-				InitialDirectory = PathManager.MakeAbsolutePath(Global.Config.PathEntries["Global_NULL", "ROM"].Path, "Global_NULL"),
+				InitialDirectory = PathManager.MakeAbsolutePath(_parent.Config.PathEntries["Global_NULL", "ROM"].Path, "Global_NULL"),
 				Filter = MainForm.RomFilter,
 				RestoreDirectory = true
-			})
+			};
+			string hawkPath = "";
+
+			var result = ofd.ShowHawkDialog();
+			if (result == DialogResult.OK)
 			{
-				var result = ofd.ShowHawkDialog();
-				if (result == DialogResult.OK)
+				hawkPath = ofd.FileName;
+			}
+			else
+			{
+				return;
+			}
+
+			try
+			{
+				var file = new FileInfo(ofd.FileName);
+				var path = EmuHawkUtil.ResolveShortcut(file.FullName);
+
+				using var hf = new HawkFile(path);
+				if (hf.IsArchive)
 				{
-					PathBox.Text = ofd.FileName;
+					// archive - run the archive chooser
+					if (SystemString == "PSX" || SystemString == "PCFX" || SystemString == "SAT")
+					{
+						MessageBox.Show("Using archives with PSX, PCFX or SATURN is not currently recommended/supported.");
+						return;
+					}
+
+					using var ac = new ArchiveChooser(new HawkFile(hawkPath));
+					int memIdx = -1;
+
+					if (ac.ShowDialog(this) == DialogResult.OK)
+					{
+						memIdx = ac.SelectedMemberIndex;
+					}
+
+					var intName = hf.ArchiveItems[memIdx];
+					PathBox.Text = $"{hawkPath}|{intName.Name}";
 				}
+				else
+				{
+					// file is not an archive
+					PathBox.Text = hawkPath;
+				}
+			}
+			catch
+			{
+				// Do nothing
 			}
 		}
 
 		private void UseCurrentRomButton_Click(object sender, EventArgs e)
 		{
-			PathBox.Text = GlobalWin.MainForm.CurrentlyOpenRom;
+			PathBox.Text = _parent.MainForm.CurrentlyOpenRom;
 		}
 
 		private void DualGBFileSelector_Load(object sender, EventArgs e)
@@ -92,13 +132,11 @@ namespace BizHawk.Client.EmuHawk
 			UpdateValues();
 		}
 
-		public void NewUpdate(ToolFormUpdateType type) { }
-
 		public void UpdateValues()
 		{
 			UseCurrentRomButton.Enabled =
-				!string.IsNullOrEmpty(GlobalWin.MainForm.CurrentlyOpenRom)
-				&& !GlobalWin.MainForm.CurrentlyOpenRom.Contains(".xml"); // Can't already be an xml
+				!string.IsNullOrEmpty(_parent.MainForm.CurrentlyOpenRom)
+				&& !_parent.MainForm.CurrentlyOpenRom.Contains(".xml"); // Can't already be an xml
 		}
 
 		private void PathBox_TextChanged(object sender, EventArgs e)

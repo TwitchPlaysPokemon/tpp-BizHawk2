@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+
+using BizHawk.Common;
+
 using NLua;
 
 // TODO - evaluate for re-entrancy problems
@@ -18,18 +21,21 @@ namespace BizHawk.Client.Common
 
 		private string _currentDirectory;
 
-		#if WINDOWS
-		[DllImport("kernel32.dll", SetLastError = true)]
-		static extern bool SetCurrentDirectoryW(byte* lpPathName);
-		[DllImport("kernel32.dll", SetLastError=true)]
-		static extern uint GetCurrentDirectoryW(uint nBufferLength, byte* pBuffer);
-		#endif
-
 		private bool CoolSetCurrentDirectory(string path, string currDirSpeedHack = null)
 		{
-			string target = _currentDirectory + "\\";
+			static string CoolGetCurrentDirectory()
+			{
+				if (OSTailoredCode.IsUnixHost) return Environment.CurrentDirectory;
 
-			// first we'll bypass it with a general hack: dont do any setting if the value's already there (even at the OS level, setting the directory can be slow)
+				//HACK to bypass Windows security checks triggered by *getting* the current directory (why), which only slow us down
+				var buf = new byte[32768];
+				fixed (byte* pBuf = &buf[0])
+					return System.Text.Encoding.Unicode.GetString(buf, 0, 2 * (int) Win32Imports.GetCurrentDirectoryW(32767, pBuf));
+			}
+
+			string target = $"{_currentDirectory}\\";
+
+			// first we'll bypass it with a general hack: don't do any setting if the value's already there (even at the OS level, setting the directory can be slow)
 			// yeah I know, not the smoothest move to compare strings here, in case path normalization is happening at some point
 			// but you got any better ideas?
 			if (currDirSpeedHack == null)
@@ -42,40 +48,20 @@ namespace BizHawk.Client.Common
 				return true;
 			}
 
-			// WARNING: setting the current directory is SLOW!!! security checks for some reason.
-			// so we're bypassing it with windows hacks
-			#if WINDOWS
-				fixed (byte* pstr = &System.Text.Encoding.Unicode.GetBytes(target + "\0")[0])
-					return SetCurrentDirectoryW(pstr);
-			#else
-				if (System.IO.Directory.Exists(CurrentDirectory)) // race condition for great justice
+			if (OSTailoredCode.IsUnixHost)
+			{
+				if (System.IO.Directory.Exists(_currentDirectory)) //TODO is this necessary with Mono? extra TODO: is this necessary with .NET Core on Windows?
 				{
-					Environment.CurrentDirectory = CurrentDirectory; // thats right, you can't set a directory as current that doesnt exist because .net's got to do SENSELESS SLOW-ASS SECURITY CHECKS on it and it can't do that on a NONEXISTENT DIRECTORY
+					Environment.CurrentDirectory = _currentDirectory;
 					return true;
 				}
-				else
-				{
-					return false;
-				}
-			#endif
-		}
 
-		private string CoolGetCurrentDirectory()
-		{
-			// GUESS WHAT!
-			// .NET DOES A SECURITY CHECK ON THE DIRECTORY WE JUST RETRIEVED
-			// AS IF ASKING FOR THE CURRENT DIRECTORY IS EQUIVALENT TO TRYING TO ACCESS IT
-			// SCREW YOU
-			#if WINDOWS
-				var buf = new byte[32768];
-				fixed(byte* pBuf = &buf[0])
-				{
-					uint ret = GetCurrentDirectoryW(32767, pBuf);
-					return System.Text.Encoding.Unicode.GetString(buf, 0, (int)ret*2);
-				}
-			#else
-				return Environment.CurrentDirectory;
-			#endif
+				return false;
+			}
+
+			//HACK to bypass Windows security checks triggered by setting the current directory, which only slow us down
+			fixed (byte* pstr = &System.Text.Encoding.Unicode.GetBytes($"{target}\0")[0])
+				return Win32Imports.SetCurrentDirectoryW(pstr);
 		}
 
 		private void Sandbox(Action callback, Action exceptionCallback)
@@ -115,6 +101,7 @@ namespace BizHawk.Client.Common
 			return sandbox;
 		}
 
+		/// <exception cref="InvalidOperationException">could not get sandbox reference for thread (<see cref="CreateSandbox"/> has not been called)</exception>
 		public static LuaSandbox GetSandbox(Lua thread)
 		{
 			// this is just placeholder.
@@ -126,8 +113,7 @@ namespace BizHawk.Client.Common
 
 			lock (SandboxForThread)
 			{
-				LuaSandbox sandbox;
-				if (SandboxForThread.TryGetValue(thread, out sandbox))
+				if (SandboxForThread.TryGetValue(thread, out var sandbox))
 				{
 					return sandbox;
 				}

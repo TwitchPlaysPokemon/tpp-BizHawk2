@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Xml;
 using System.Xml.XPath;
 using System.Xml.Linq;
-using System.Linq;
 using System.IO;
-using System.Text;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Windows.Forms;
+
 using BizHawk.Client.Common;
+using BizHawk.Common;
 using BizHawk.Emulation.Cores.Nintendo.NES;
 using BizHawk.Emulation.Common;
 
@@ -18,7 +15,7 @@ namespace BizHawk.Client.EmuHawk
 	public partial class NESMusicRipper : Form, IToolFormAutoConfig
 	{
 		[RequiredService]
-		private NES nes { get; set; }
+		private NES Nes { get; set; }
 
 		public NESMusicRipper()
 		{
@@ -26,8 +23,8 @@ namespace BizHawk.Client.EmuHawk
 			SyncContents();
 		}
 
-		public bool AskSaveChanges() { return true; }
-		public bool UpdateBefore { get { return true; } }
+		public bool AskSaveChanges() => true;
+		public bool UpdateBefore => true;
 
 		public void Restart()
 		{
@@ -48,18 +45,18 @@ namespace BizHawk.Client.EmuHawk
 
 		//http://www.phy.mtu.edu/~suits/notefreqs.html
 		//begins at C0. ends at B8
-		static readonly float[] freqtbl = new[] {0,
+		static readonly float[] freqtbl = {0,
 			16.35f,17.32f,18.35f,19.45f,20.6f,21.83f,23.12f,24.5f,25.96f,27.5f,29.14f,30.87f,32.7f,34.65f,36.71f,38.89f,41.2f,43.65f,46.25f,49f,51.91f,55f,58.27f,61.74f,65.41f,69.3f,73.42f,77.78f,82.41f,87.31f,92.5f,98f,103.83f,110f,116.54f,123.47f,130.81f,138.59f,146.83f,155.56f,164.81f,174.61f,185f,196f,207.65f,220f,233.08f,246.94f,261.63f,277.18f,293.66f,311.13f,329.63f,349.23f,369.99f,392f,415.3f,440f,466.16f,493.88f,523.25f,554.37f,587.33f,622.25f,659.25f,698.46f,739.99f,783.99f,830.61f,880f,932.33f,987.77f,1046.5f,1108.73f,1174.66f,1244.51f,1318.51f,1396.91f,1479.98f,1567.98f,1661.22f,1760f,1864.66f,1975.53f,2093f,2217.46f,2349.32f,2489.02f,2637.02f,2793.83f,2959.96f,3135.96f,3322.44f,3520f,3729.31f,3951.07f,4186.01f,4434.92f,4698.63f,4978.03f,5274.04f,5587.65f,5919.91f,6271.93f,6644.88f,7040f,7458.62f,7902.13f,
 			1000000
 		};
 
-		static readonly string[] noteNames = new[] { "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-" };
+		static readonly string[] noteNames = { "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-" };
 
 		string NameForNote(int note)
 		{
 			int tone = note % 12;
 			int octave = note / 12;
-			return string.Format("{0}{1}", noteNames[tone], octave);
+			return noteNames[tone] + octave;
 		}
 
 		//this isnt thoroughly debugged but it seems to work OK
@@ -71,10 +68,8 @@ namespace BizHawk.Client.EmuHawk
 				float a = freqtbl[i - 1];
 				float b = freqtbl[i];
 				float c = freqtbl[i + 1];
-				float min = (a + b) / 2;
-				float max = (b + c) / 2;
-				if (freq >= min && freq <= max)
-					return i - 1;
+				var range = ((a + b) / 2).RangeTo((b + c) / 2);
+				if (range.Contains(freq)) return i - 1;
 			}
 			return 95; //I guess?
 		}
@@ -115,10 +110,14 @@ namespace BizHawk.Client.EmuHawk
 		private void btnExport_Click(object sender, EventArgs e)
 		{
 			//acquire target
-			var sfd = new SaveFileDialog();
-			sfd.Filter = "XRNS (*.xrns)|*.xrns";
-			if (sfd.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+			using var sfd = new SaveFileDialog
+			{
+				Filter = "XRNS (*.xrns)|*.xrns"
+			};
+			if (sfd.ShowDialog() != DialogResult.OK)
+			{
 				return;
+			}
 
 			//configuration:
 			var outPath = sfd.FileName;
@@ -131,13 +130,11 @@ namespace BizHawk.Client.EmuHawk
 			var zfTemplate = new ICSharpCode.SharpZipLib.Zip.ZipFile(templatePath);
 			{
 				int zfSongXmlIndex = zfTemplate.FindEntry("Song.xml", true);
-				using (var zis = zfTemplate.GetInputStream(zfTemplate.GetEntry("Song.xml")))
-				{
-					byte[] buffer = new byte[4096];     // 4K is optimum
-					ICSharpCode.SharpZipLib.Core.StreamUtils.Copy(zis, msSongXml, buffer);
-				}
+				using var zis = zfTemplate.GetInputStream(zfTemplate.GetEntry("Song.xml"));
+				byte[] buffer = new byte[4096];     // 4K is optimum
+				ICSharpCode.SharpZipLib.Core.StreamUtils.Copy(zis, msSongXml, buffer);
 			}
-			XElement templateRoot = XElement.Parse(System.Text.Encoding.UTF8.GetString(msSongXml.ToArray()));
+			var templateRoot = XElement.Parse(System.Text.Encoding.UTF8.GetString(msSongXml.ToArray()));
 
 			//get the pattern pool, and whack the child nodes
 			var xPatterns = templateRoot.XPathSelectElement("//Patterns");
@@ -428,7 +425,7 @@ namespace BizHawk.Client.EmuHawk
 			//fpulse = fCPU/(16*(t+1)) (where fCPU is 1.789773 MHz for NTSC, 1.662607 MHz for PAL, and 1.773448 MHz for Dendy)
 			//ftriangle = fCPU/(32*(tval + 1))
 
-			var apu = nes.apu;
+			var apu = Nes.apu;
 			
 			//evaluate the pitches
 			int pulse0_period = apu.pulse[0].timer_reload_value;
@@ -471,7 +468,7 @@ namespace BizHawk.Client.EmuHawk
 
 		void SyncContents()
 		{
-			lblContents.Text = string.Format("{0} Rows", Log.Count);
+			lblContents.Text = $"{Log.Count} Rows";
 		}
 
 		private void btnControl_Click(object sender, EventArgs e)
@@ -479,16 +476,16 @@ namespace BizHawk.Client.EmuHawk
 			if(IsRunning)
 			{
 				SyncContents();
-				nes.apu.DebugCallback = null;
-				nes.apu.DebugCallbackDivider = 0;
+				Nes.apu.DebugCallback = null;
+				Nes.apu.DebugCallbackDivider = 0;
 				IsRunning = false;
 				btnControl.Text = "Start";
 			}
 			else
 			{
 				Log.Clear();
-				nes.apu.DebugCallback = DebugCallback;
-				nes.apu.DebugCallbackDivider = int.Parse(txtDivider.Text);
+				Nes.apu.DebugCallback = DebugCallback;
+				Nes.apu.DebugCallbackDivider = int.Parse(txtDivider.Text);
 				IsRunning = true;
 				btnControl.Text = "Stop";
 			}
@@ -501,15 +498,10 @@ namespace BizHawk.Client.EmuHawk
 
 		private void NESMusicRipper_FormClosed(object sender, FormClosedEventArgs e)
 		{
-			var apu = nes.apu;
+			var apu = Nes.apu;
 			apu.DebugCallbackDivider = 0;
 			apu.DebugCallbackTimer = 0;
 			apu.DebugCallback = null;
-		}
-
-		private void NESMusicRipper_Load(object sender, EventArgs e)
-		{
-
 		}
 	}
 }

@@ -17,8 +17,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private SolidBrush GetBrush(Color color)
 		{
-			SolidBrush b;
-			if (!_solidBrushes.TryGetValue(color, out b))
+			if (!_solidBrushes.TryGetValue(color, out var b))
 			{
 				b = new SolidBrush(color);
 				_solidBrushes[color] = b;
@@ -29,8 +28,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private Pen GetPen(Color color)
 		{
-			Pen p;
-			if (!_pens.TryGetValue(color, out p))
+			if (!_pens.TryGetValue(color, out var p))
 			{
 				p = new Pen(color);
 				_pens[color] = p;
@@ -190,7 +188,7 @@ namespace BizHawk.Client.EmuHawk
 			_imageCache.Clear();
 		}
 
-		public void DrawImageRegion(string path, int source_x, int source_y, int source_width, int source_height, int dest_x, int dest_y, int? dest_width = null, int? dest_height = null)
+		public void DrawImageRegion(string path, int sourceX, int sourceY, int sourceWidth, int sourceHeight, int destX, int destY, int? destWidth = null, int? destHeight = null)
 		{
 			Image img;
 			if (_imageCache.ContainsKey(path))
@@ -203,10 +201,10 @@ namespace BizHawk.Client.EmuHawk
 				_imageCache.Add(path, img);
 			}
 
-			var destRect = new Rectangle(dest_x, dest_y, dest_width ?? source_width, dest_height ?? source_height);
+			var destRect = new Rectangle(destX, destY, destWidth ?? sourceWidth, destHeight ?? sourceHeight);
 
 			var boxBackground = Graphics.FromImage(Image);
-			boxBackground.DrawImage(img, destRect, source_x, source_y, source_width, source_height, GraphicsUnit.Pixel);
+			boxBackground.DrawImage(img, destRect, sourceX, sourceY, sourceWidth, sourceHeight, GraphicsUnit.Pixel);
 		}
 
 		public void DrawLine(int x1, int y1, int x2, int y2, Color? color = null)
@@ -221,10 +219,10 @@ namespace BizHawk.Client.EmuHawk
 			DrawLine(x, y + size, x, y - size, color);
 		}
 
-		public void DrawArc(int x, int y, int width, int height, int startangle, int sweepangle, Color? line = null)
+		public void DrawArc(int x, int y, int width, int height, int startAngle, int sweepAngle, Color? line = null)
 		{
 			var boxBackground = Graphics.FromImage(Image);
-			boxBackground.DrawArc(GetPen(line ?? _defaultForeground), x, y, width, height, startangle, sweepangle);
+			boxBackground.DrawArc(GetPen(line ?? _defaultForeground), x, y, width, height, startAngle, sweepAngle);
 		}
 
 		public void DrawPie(
@@ -232,8 +230,8 @@ namespace BizHawk.Client.EmuHawk
 			int y,
 			int width,
 			int height,
-			int startangle,
-			int sweepangle,
+			int startAngle,
+			int sweepAngle,
 			Color? line = null,
 			Color? background = null)
 		{
@@ -242,11 +240,11 @@ namespace BizHawk.Client.EmuHawk
 			if (bg.HasValue)
 			{
 				var brush = GetBrush(bg.Value);
-				boxBackground.FillPie(brush, x, y, width, height, startangle, sweepangle);
+				boxBackground.FillPie(brush, x, y, width, height, startAngle, sweepAngle);
 				boxBackground = Graphics.FromImage(Image);
 			}
 			
-			boxBackground.DrawPie(GetPen(line ?? _defaultForeground), x + 1, y + 1, width - 1, height - 1, startangle, sweepangle);
+			boxBackground.DrawPie(GetPen(line ?? _defaultForeground), x + 1, y + 1, width - 1, height - 1, startAngle, sweepAngle);
 		}
 
 		public void DrawPixel(int x, int y, Color? color = null)
@@ -255,13 +253,13 @@ namespace BizHawk.Client.EmuHawk
 			boxBackground.DrawLine(GetPen(color ?? _defaultForeground), x, y, x + 0.1F, y);
 		}
 
-		public void DrawPolygon(LuaTable points, Color? line = null, Color? background = null)
+		public void DrawPolygon(LuaTable points, int? x = null, int? y = null, Color? line = null, Color? background = null)
 		{
 			var pointsArr = new Point[points.Values.Count];
 			var i = 0;
 			foreach (LuaTable point in points.Values)
 			{
-				pointsArr[i] = new Point((int)(double)(point[1]), (int)(double)(point[2]));
+				pointsArr[i] = new Point((int)(double)(point[1]) + x ?? 0, (int)(double)(point[2]) + y ?? 0);
 				i++;
 			}
 
@@ -292,92 +290,93 @@ namespace BizHawk.Client.EmuHawk
 			int x,
 			int y,
 			string message,
-			Color? forecolor = null,
-			Color? backcolor = null,
-			int? fontsize = null,
-			string fontfamily = null,
-			string fontstyle = null,
-			string horizalign = null,
-			string vertalign = null)
+			Color? foreColor = null,
+			Color? backColor = null,
+			int? fontSize = null,
+			string fontFamily = null,
+			string fontStyle = null,
+			string horizAlign = null,
+			string vertAlign = null)
 		{
 			var family = FontFamily.GenericMonospace;
-			if (fontfamily != null)
+			if (fontFamily != null)
 			{
-				family = new FontFamily(fontfamily);
+				family = new FontFamily(fontFamily);
 			}
 
-			var fstyle = FontStyle.Regular;
-			if (fontstyle != null)
+			var fStyle = FontStyle.Regular;
+			if (fontStyle != null)
 			{
-				switch (fontstyle.ToLower())
+				switch (fontStyle.ToLower())
 				{
 					default:
 					case "regular":
 						break;
 					case "bold":
-						fstyle = FontStyle.Bold;
+						fStyle = FontStyle.Bold;
 						break;
 					case "italic":
-						fstyle = FontStyle.Italic;
+						fStyle = FontStyle.Italic;
 						break;
 					case "strikethrough":
-						fstyle = FontStyle.Strikeout;
+						fStyle = FontStyle.Strikeout;
 						break;
 					case "underline":
-						fstyle = FontStyle.Underline;
+						fStyle = FontStyle.Underline;
 						break;
 				}
 			}
 
 			var f = new StringFormat(StringFormat.GenericDefault);
-			var font = new Font(family, fontsize ?? 12, fstyle, GraphicsUnit.Pixel);
+			var font = new Font(family, fontSize ?? 12, fStyle, GraphicsUnit.Pixel);
 			var boxBackground = Graphics.FromImage(Image);
-			
-		Size sizeOfText = boxBackground.MeasureString(message, font, 0, f).ToSize();
 
-			if (horizalign != null)
+			Size sizeOfText = boxBackground.MeasureString(message, font, 0, f).ToSize();
+
+			if (horizAlign != null)
 			{
-				switch (horizalign.ToLower())
+				switch (horizAlign.ToLower())
 				{
 					default:
 					case "left":
 						break;
 					case "center":
+					case "middle":
 						x -= sizeOfText.Width / 2;
 						break;
 					case "right":
-						x -= sizeOfText.Width / 2;
+						x -= sizeOfText.Width;
 						break;
 				}
 			}
 
-			if (vertalign != null)
+			if (vertAlign != null)
 			{
-				switch (vertalign.ToLower())
+				switch (vertAlign.ToLower())
 				{
 					default:
-					case "bottom":
+					case "top":
 						break;
+					case "center":
 					case "middle":
 						y -= sizeOfText.Height / 2;
 						break;
-					case "top":
+					case "bottom":
 						y -= sizeOfText.Height;
 						break;
 				}
 			}
 			Rectangle rect = new Rectangle(new Point(x, y), sizeOfText);
 			boxBackground = Graphics.FromImage(Image);
-			boxBackground.FillRectangle(GetBrush(backcolor ?? _defaultTextBackground.Value), rect);
+			boxBackground.FillRectangle(GetBrush(backColor ?? _defaultTextBackground.Value), rect);
 			boxBackground = Graphics.FromImage(Image);
 			boxBackground.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-			boxBackground = Graphics.FromImage(Image);
-			boxBackground.DrawString(message, font, new SolidBrush(forecolor ?? Color.Black), x, y);
+			boxBackground.DrawString(message, font, new SolidBrush(foreColor ?? Color.Black), x, y);
 		}
 		
 		public Point GetMouse()
 		{
-			var p = PointToClient(Control.MousePosition);
+			var p = PointToClient(MousePosition);
 			return p;
 		}
 

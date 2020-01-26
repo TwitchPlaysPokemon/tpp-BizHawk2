@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 
@@ -20,30 +19,30 @@ namespace BizHawk.Client.EmuHawk
 {
 	public partial class CDL : ToolFormBase, IToolFormAutoConfig
 	{
-		private RecentFiles _recent_fld = new RecentFiles();
+		private RecentFiles _recentFld = new RecentFiles();
 
 		[ConfigPersist]
 		private RecentFiles _recent
 		{
-			get
-			{ return _recent_fld; }
-			set
-			{
-				_recent_fld = value;
-				if (_recent_fld.AutoLoad)
-				{
-					LoadFile(_recent.MostRecent);
-					SetCurrentFilename(_recent.MostRecent);
-				}
-			}
+			get => _recentFld;
+			set => _recentFld = value;
 		}
+
+		[ConfigPersist]
+		private bool CDLAutoSave { get; set; } = true;
+
+		[ConfigPersist]
+		private bool CDLAutoStart { get; set; } = true;
+		
+		[ConfigPersist]
+		private bool CDLAutoResume { get; set; } = true;
 
 		void SetCurrentFilename(string fname)
 		{
 			_currentFilename = fname;
-			if (_currentFilename == null)
-				Text = "Code Data Logger";
-			else Text = string.Format("Code Data Logger - {0}", fname);
+			Text = _currentFilename == null
+				? "Code Data Logger"
+				: $"Code Data Logger - {fname}";
 		}
 
 		[RequiredService]
@@ -52,7 +51,7 @@ namespace BizHawk.Client.EmuHawk
 		[RequiredService]
 		private ICodeDataLogger CodeDataLogger { get; set; }
 
-		private string _currentFilename = null;
+		private string _currentFilename;
 		private CodeDataLog _cdl;
 
 		public CDL()
@@ -63,6 +62,24 @@ namespace BizHawk.Client.EmuHawk
 			InitializeComponent();
 
 			tsbViewStyle.SelectedIndex = 0;
+
+			lvCDL.AllColumns.Clear();
+			lvCDL.AllColumns.AddRange(new []
+			{
+				new RollColumn { Name = "CDLFile", Text = "CDL File @", Width = 107, Type = ColumnType.Text  },
+				new RollColumn { Name = "Domain", Text = "Domain", Width = 126, Type = ColumnType.Text  },
+				new RollColumn { Name = "Percent", Text = "%", Width = 58, Type = ColumnType.Text  },
+				new RollColumn { Name = "Mapped", Text = "Mapped", Width = 64, Type = ColumnType.Text  },
+				new RollColumn { Name = "Size", Text = "Size", Width = 112, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x01", Text = "0x01", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x02", Text = "0x02", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x04", Text = "0x04", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x08", Text = "0x08", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x10", Text = "0x10", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x20", Text = "0x20", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x40", Text = "0x40", Width = 56, Type = ColumnType.Text  },
+				new RollColumn { Name = "0x80", Text = "0x80", Width = 56, Type = ColumnType.Text  }
+			});
 		}
 
 		public void NewUpdate(ToolFormUpdateType type) { }
@@ -87,12 +104,12 @@ namespace BizHawk.Client.EmuHawk
 			UpdateDisplay(true);
 		}
 
-		void SetLoggingActiveCheck(bool value)
+		private void SetLoggingActiveCheck(bool value)
 		{
 			tsbLoggingActive.Checked = value;
 		}
 
-		string[][] listContents = new string[0][];
+		private string[][] _listContents = new string[0][];
 
 		private void UpdateDisplay(bool force)
 		{
@@ -102,15 +119,11 @@ namespace BizHawk.Client.EmuHawk
 
 			if (_cdl == null)
 			{
-				lvCDL.BeginUpdate();
-				lvCDL.Items.Clear();
-				lvCDL.EndUpdate();
+				lvCDL.DeselectAll();
 				return;
 			}
 
-			lvCDL.BeginUpdate();
-
-			listContents = new string[_cdl.Count][];
+			_listContents = new string[_cdl.Count][];
 
 			int idx = 0;
 			foreach (var kvp in _cdl)
@@ -151,71 +164,81 @@ namespace BizHawk.Client.EmuHawk
 				var bm = _cdl.GetBlockMap();
 				long addr = bm[kvp.Key];
 
-				var lvi = listContents[idx++] = new string[13];
-				lvi[0] = string.Format("{0:X8}", addr);
+				var lvi = _listContents[idx++] = new string[13];
+				lvi[0] = $"{addr:X8}";
 				lvi[1] = kvp.Key;
-				lvi[2] = string.Format("{0:0.00}%", total / (float)kvp.Value.Length * 100f);
+				lvi[2] = $"{total / (float)kvp.Value.Length * 100f:0.00}%";
 				if (tsbViewStyle.SelectedIndex == 2)
-					lvi[3] = string.Format("{0:0.00}", total / 1024.0f);
+					lvi[3] = $"{total / 1024.0f:0.00}";
 				else
-					lvi[3] = string.Format("{0}", total);
+					lvi[3] = $"{total}";
 				if (tsbViewStyle.SelectedIndex == 2)
 				{
 					int n = (int)(kvp.Value.Length / 1024.0f);
 					float ncheck = kvp.Value.Length / 1024.0f;
-					lvi[4] = string.Format("of {0}{1} KBytes", n == ncheck ? "" : "~", n);
+					lvi[4] = $"of {(n == ncheck ? "" : "~")}{n} KBytes";
 				}
 				else
-					lvi[4] = string.Format("of {0} Bytes", kvp.Value.Length);
+					lvi[4] = $"of {kvp.Value.Length} Bytes";
 				for (int i = 0; i < 8; i++)
 				{
 					if (tsbViewStyle.SelectedIndex == 0)
-						lvi[5 + i] = string.Format("{0:0.00}%", totals[i] / (float)kvp.Value.Length * 100f);
+						lvi[5 + i] = $"{totals[i] / (float)kvp.Value.Length * 100f:0.00}%";
 					if (tsbViewStyle.SelectedIndex == 1)
-						lvi[5 + i] = string.Format("{0}", totals[i]);
+						lvi[5 + i] = $"{totals[i]}";
 					if (tsbViewStyle.SelectedIndex == 2)
-						lvi[5 + i] = string.Format("{0:0.00}", totals[i] / 1024.0f);
+						lvi[5 + i] = $"{totals[i] / 1024.0f:0.00}";
 				}
 
 			}
-			lvCDL.VirtualListSize = _cdl.Count;
-			lvCDL.EndUpdate();
+			lvCDL.RowCount = _cdl.Count;
 		}
 
 		public bool AskSaveChanges()
 		{
-			//nothing to fear:
+			// nothing to fear:
 			if (_cdl == null)
 				return true;
 
-			//try auto-saving if appropriate
-			if (Global.Config.CDLAutoSave)
+			// try auto-saving if appropriate
+			if (CDLAutoSave)
 			{
-				//TODO - I dont like this system. It's hard to figure out how to use it. It should be done in multiple passes.
-				var result = MessageBox.Show("Save changes to CDL session?", "CDL Auto Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-				if (result == DialogResult.No)
-					return true;
-
-				if (string.IsNullOrWhiteSpace(_currentFilename))
-				{
-					if (!RunSaveAs())
-						return false;
-				}
-				else
+				if (_currentFilename != null)
 				{
 					RunSave();
+					ShutdownCDL();
 					return true;
 				}
 			}
 
+			// TODO - I don't like this system. It's hard to figure out how to use it. It should be done in multiple passes.
+			var result = MessageBox.Show("Save changes to CDL session?", "CDL Auto Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+			if (result == DialogResult.No)
+			{
+				ShutdownCDL();
+				return true;
+			}
+
+			if (string.IsNullOrWhiteSpace(_currentFilename))
+			{
+				if (RunSaveAs())
+				{
+					ShutdownCDL();
+					return true;
+				}
+				
+				ShutdownCDL();
+				return false;
+			}
+
+			RunSave();
+			ShutdownCDL();
 			return true;
 		}
 
-		public bool UpdateBefore
-		{
-			get { return false; }
-		}
+		public bool UpdateBefore => false;
 
+		private bool _autoloading;
 		public void LoadFile(string path)
 		{
 			using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
@@ -228,15 +251,19 @@ namespace BizHawk.Client.EmuHawk
 				CodeDataLogger.NewCDL(testCDL);
 				if (!newCDL.Check(testCDL))
 				{
-					MessageBox.Show(this, "CDL file does not match emulator's current memory map!");
+					if(!_autoloading)
+						MessageBox.Show(this, "CDL file does not match emulator's current memory map!");
 					return;
 				}
 
 				//ok, it's all good:
 				_cdl = newCDL;
 				CodeDataLogger.SetCDL(null);
-				if (tsbLoggingActive.Checked || Global.Config.CDLAutoStart)
+				if (tsbLoggingActive.Checked || CDLAutoStart)
+				{
+					tsbLoggingActive.Checked = true;
 					CodeDataLogger.SetCDL(_cdl);
+				}
 
 				SetCurrentFilename(path);
 			}
@@ -253,14 +280,15 @@ namespace BizHawk.Client.EmuHawk
 				DisassembleMenuItem.Enabled =
 				_cdl != null;
 
-			miAutoSave.Checked = Global.Config.CDLAutoSave;
-			miAutoStart.Checked = Global.Config.CDLAutoStart;
+			miAutoSave.Checked = CDLAutoSave;
+			miAutoStart.Checked = CDLAutoStart;
+			miAutoResume.Checked = CDLAutoResume;
 		}
 
 		private void RecentSubMenu_DropDownOpened(object sender, EventArgs e)
 		{
 			RecentSubMenu.DropDownItems.Clear();
-			RecentSubMenu.DropDownItems.AddRange(_recent.RecentMenu(LoadFile, true));
+			RecentSubMenu.DropDownItems.AddRange(_recent.RecentMenu(LoadFile, "Session"));
 		}
 
 		void NewFileLogic()
@@ -268,7 +296,7 @@ namespace BizHawk.Client.EmuHawk
 			_cdl = new CodeDataLog();
 			CodeDataLogger.NewCDL(_cdl);
 
-			if (tsbLoggingActive.Checked || Global.Config.CDLAutoStart)
+			if (tsbLoggingActive.Checked || CDLAutoStart)
 				CodeDataLogger.SetCDL(_cdl);
 			else CodeDataLogger.SetCDL(null);
 
@@ -294,7 +322,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			var file = OpenFileDialog(
 				_currentFilename,
-				PathManager.MakeAbsolutePath(Global.Config.PathEntries.LogPathFragment, null),
+				PathManager.MakeAbsolutePath(Config.PathEntries.LogPathFragment, null),
 				"Code Data Logger Files",
 				"cdl");
 
@@ -315,10 +343,8 @@ namespace BizHawk.Client.EmuHawk
 		void RunSave()
 		{
 			_recent.Add(_currentFilename);
-			using (var fs = new FileStream(_currentFilename, FileMode.Create, FileAccess.Write))
-			{
-				_cdl.Save(fs);
-			}
+			using var fs = new FileStream(_currentFilename, FileMode.Create, FileAccess.Write);
+			_cdl.Save(fs);
 		}
 
 		private void SaveMenuItem_Click(object sender, EventArgs e)
@@ -345,7 +371,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			var file = SaveFileDialog(
 				_currentFilename,
-				PathManager.MakeAbsolutePath(Global.Config.PathEntries.LogPathFragment, null),
+				PathManager.MakeAbsolutePath(Config.PathEntries.LogPathFragment, null),
 				"Code Data Logger Files",
 				"cdl");
 
@@ -372,24 +398,22 @@ namespace BizHawk.Client.EmuHawk
 			{
 				var file = ToolFormBase.OpenFileDialog(
 					_currentFilename,
-					PathManager.MakeAbsolutePath(Global.Config.PathEntries.LogPathFragment, null),
+					PathManager.MakeAbsolutePath(Config.PathEntries.LogPathFragment, null),
 					"Code Data Logger Files",
 					"cdl");
 
 				if (file != null)
 				{
-					using (var fs = new FileStream(file.FullName, FileMode.Open, FileAccess.Read))
+					using var fs = new FileStream(file.FullName, FileMode.Open, FileAccess.Read);
+					var newCDL = new CodeDataLog();
+					newCDL.Load(fs);
+					if (!_cdl.Check(newCDL))
 					{
-						var newCDL = new CodeDataLog();
-						newCDL.Load(fs);
-						if (!_cdl.Check(newCDL))
-						{
-							MessageBox.Show(this, "CDL file does not match emulator's current memory map!");
-							return;
-						}
-						_cdl.LogicalOrFrom(newCDL);
-						UpdateDisplay(true);
+						MessageBox.Show(this, "CDL file does not match emulator's current memory map!");
+						return;
 					}
+					_cdl.LogicalOrFrom(newCDL);
+					UpdateDisplay(true);
 				}
 			}
 		}
@@ -419,20 +443,25 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			var sfd = new SaveFileDialog();
+			using var sfd = new SaveFileDialog();
 			var result = sfd.ShowDialog(this);
 			if (result == DialogResult.OK)
 			{
-				using (var fs = new FileStream(sfd.FileName, FileMode.Create, FileAccess.Write))
-				{
-					CodeDataLogger.DisassembleCDL(fs, _cdl);
-				}
+				using var fs = new FileStream(sfd.FileName, FileMode.Create, FileAccess.Write);
+				CodeDataLogger.DisassembleCDL(fs, _cdl);
 			}
 		}
 
 		private void ExitMenuItem_Click(object sender, EventArgs e)
 		{
+			ShutdownCDL();
 			Close();
+		}
+
+		void ShutdownCDL()
+		{
+			_cdl = null;
+			CodeDataLogger.SetCDL(null);
 		}
 
 		protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -444,28 +473,64 @@ namespace BizHawk.Client.EmuHawk
 
 		protected override void OnShown(EventArgs e)
 		{
-			if (Global.Config.CDLAutoStart)
-				NewFileLogic();
+			if (CDLAutoStart)
+			{
+				if (_cdl == null)
+					NewFileLogic();
+			}
 			base.OnShown(e);
 		}
 
 		protected override void OnClosed(EventArgs e)
 		{
-			//deactivate logger
-			if (CodeDataLogger != null) //just in case...
-				CodeDataLogger.SetCDL(null);
+			CodeDataLogger?.SetCDL(null);
 		}
 
-		private void PCECDL_Load(object sender, EventArgs e)
+		private void CDL_Load(object sender, EventArgs e)
 		{
+			if (CDLAutoResume)
+			{
+				try
+				{
+					_autoloading = true;
+					var autoResumeFile = $"{PathManager.FilesystemSafeName(Global.Game)}.cdl";
+					var autoResumeDir = PathManager.MakeAbsolutePath(Config.PathEntries.LogPathFragment, null);
+					var autoResumePath = Path.Combine(autoResumeDir, autoResumeFile);
+					if (File.Exists(autoResumePath))
+					{
+						LoadFile(autoResumePath);
+					}
+				}
+				finally
+				{
+					_autoloading = false;
+				}
+			}
+
+			if (_recentFld.AutoLoad && !_recentFld.Empty)
+			{
+				if (File.Exists(_recent.MostRecent))
+				{
+					try
+					{
+						_autoloading = true;
+						LoadFile(_recent.MostRecent);
+					}
+					finally
+					{
+						_autoloading = false;
+					}
+					SetCurrentFilename(_recent.MostRecent);
+				}
+			}
 		}
 
-		private void PCECDL_DragEnter(object sender, DragEventArgs e)
+		private void CDL_DragEnter(object sender, DragEventArgs e)
 		{
 			e.Effect = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
 		}
 
-		private void PCECDL_DragDrop(object sender, DragEventArgs e)
+		private void CDL_DragDrop(object sender, DragEventArgs e)
 		{
 			var filePaths = (string[])e.Data.GetData(DataFormats.FileDrop);
 			if (Path.GetExtension(filePaths[0]) == ".cdl")
@@ -495,15 +560,16 @@ namespace BizHawk.Client.EmuHawk
 				CodeDataLogger.SetCDL(null);
 		}
 
-		private void lvCDL_QueryItemText(int item, int subItem, out string text)
+		private void lvCDL_QueryItemText(int index, RollColumn column, out string text, ref int offsetX, ref int offsetY)
 		{
-			text = listContents[item][subItem];
+			var subItem = lvCDL.AllColumns.IndexOf(column);
+			text = _listContents[index][subItem];
 		}
 
 		private void tsbExportText_Click(object sender, EventArgs e)
 		{
-			StringWriter sw = new StringWriter();
-			foreach(var line in listContents)
+			using var sw = new StringWriter();
+			foreach(var line in _listContents)
 			{
 				foreach (var entry in line)
 					sw.Write("{0} |", entry);
@@ -514,14 +580,17 @@ namespace BizHawk.Client.EmuHawk
 
 		private void miAutoSave_Click(object sender, EventArgs e)
 		{
-			Global.Config.CDLAutoSave ^= true;
+			CDLAutoSave ^= true;
 		}
 
 		private void miAutoStart_Click(object sender, EventArgs e)
 		{
-			Global.Config.CDLAutoStart ^= true;
+			CDLAutoStart ^= true;
 		}
 
-
+		private void miAutoResume_Click(object sender, EventArgs e)
+		{
+			CDLAutoResume ^= true;
+		}
 	}
 }

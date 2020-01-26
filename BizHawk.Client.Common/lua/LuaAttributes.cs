@@ -15,6 +15,17 @@ namespace BizHawk.Client.Common
 		public string Description { get; }
 	}
 
+	[AttributeUsage(AttributeTargets.Method)]
+	public class LuaMethodExampleAttribute : Attribute
+	{
+		public LuaMethodExampleAttribute(string example)
+		{
+			Example = example;
+		}
+
+		public string Example { get; }
+	}
+
 	[AttributeUsage(AttributeTargets.Class)]
 	public class LuaLibraryAttribute : Attribute
 	{

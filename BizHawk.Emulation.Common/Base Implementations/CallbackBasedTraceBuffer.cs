@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Linq;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
 
 namespace BizHawk.Emulation.Common
@@ -18,6 +18,7 @@ namespace BizHawk.Emulation.Common
 	/// <seealso cref="IDisassemblable"/> 
 	public abstract class CallbackBasedTraceBuffer : ITraceable
 	{
+		/// <exception cref="InvalidOperationException"><paramref name="debuggableCore"/> does not provide memory callback support or does not implement <see cref="IDebuggable.GetCpuFlagsAndRegisters"/></exception>
 		protected CallbackBasedTraceBuffer(IDebuggable debuggableCore, IMemoryDomains memoryDomains, IDisassemblable disassembler)
 		{
 			if (!debuggableCore.MemoryCallbacksAvailable())
@@ -31,7 +32,7 @@ namespace BizHawk.Emulation.Common
 			}
 			catch (NotImplementedException)
 			{
-				throw new InvalidOperationException("GetCpuFlagsAndRegisters is required");
+				throw new InvalidOperationException($"{nameof(IDebuggable.GetCpuFlagsAndRegisters)} is required");
 			}
 
 			Header = "Instructions";
@@ -46,7 +47,7 @@ namespace BizHawk.Emulation.Common
 
 		protected readonly List<TraceInfo> Buffer = new List<TraceInfo>();
 
-		protected abstract void TraceFromCallback();
+		protected abstract void TraceFromCallback(uint addr, uint value, uint flags);
 
 		private ITraceSink _sink;
 
@@ -71,7 +72,8 @@ namespace BizHawk.Emulation.Common
 
 				if (_sink != null)
 				{
-					DebuggableCore.MemoryCallbacks.Add(new TracingMemoryCallback(TraceFromCallback));
+					var scope = DebuggableCore.MemoryCallbacks.AvailableScopes.First(); // This will be an issue when cores use this trace buffer and utilize multiple scopes
+					DebuggableCore.MemoryCallbacks.Add(new TracingMemoryCallback(TraceFromCallback, scope));
 				}
 			}
 		}
@@ -80,20 +82,23 @@ namespace BizHawk.Emulation.Common
 
 		public class TracingMemoryCallback : IMemoryCallback
 		{
-			public TracingMemoryCallback(Action callback)
+			public TracingMemoryCallback(MemoryCallbackDelegate callback, string scope)
 			{
 				Callback = callback;
+				Scope = scope;
 			}
 
 			public MemoryCallbackType Type => MemoryCallbackType.Execute;
 
 			public string Name => "Trace Logging";
 
-			public Action Callback { get; }
+			public MemoryCallbackDelegate Callback { get; }
 
 			public uint? Address => null;
 
 			public uint? AddressMask => null;
+
+			public string Scope { get; }
 		}
 	}
 }

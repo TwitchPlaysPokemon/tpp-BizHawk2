@@ -29,7 +29,6 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(BasicBot));
 			this.BotMenu = new MenuStripEx();
 			this.FileSubMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.NewMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -57,6 +56,7 @@
 			this.ControlsBox = new System.Windows.Forms.GroupBox();
 			this.ControlProbabilityPanel = new System.Windows.Forms.Panel();
 			this.BestGroupBox = new System.Windows.Forms.GroupBox();
+			this.btnCopyBestInput = new System.Windows.Forms.Button();
 			this.PlayBestButton = new System.Windows.Forms.Button();
 			this.ClearBestButton = new System.Windows.Forms.Button();
 			this.BestAttemptNumberLabel = new System.Windows.Forms.Label();
@@ -118,6 +118,8 @@
 			this.panel2 = new System.Windows.Forms.Panel();
 			this.StatsContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.ClearStatsContextMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+			this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.BotMenu.SuspendLayout();
 			this.BotStatusStrip.SuspendLayout();
 			this.ControlsBox.SuspendLayout();
@@ -142,24 +144,25 @@
 			// 
 			this.BotMenu.ClickThrough = true;
 			this.BotMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.FileSubMenu,
-            this.OptionsSubMenu});
+			this.FileSubMenu,
+			this.OptionsSubMenu,
+			this.helpToolStripMenuItem});
 			this.BotMenu.Location = new System.Drawing.Point(0, 0);
 			this.BotMenu.Name = "BotMenu";
-			this.BotMenu.Size = new System.Drawing.Size(687, 24);
+			this.BotMenu.Size = new System.Drawing.Size(707, 24);
 			this.BotMenu.TabIndex = 0;
 			this.BotMenu.Text = "menuStrip1";
 			// 
 			// FileSubMenu
 			// 
 			this.FileSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.NewMenuItem,
-            this.OpenMenuItem,
-            this.SaveMenuItem,
-            this.SaveAsMenuItem,
-            this.RecentSubMenu,
-            this.toolStripSeparator1,
-            this.ExitMenuItem});
+			this.NewMenuItem,
+			this.OpenMenuItem,
+			this.SaveMenuItem,
+			this.SaveAsMenuItem,
+			this.RecentSubMenu,
+			this.toolStripSeparator1,
+			this.ExitMenuItem});
 			this.FileSubMenu.Name = "FileSubMenu";
 			this.FileSubMenu.Size = new System.Drawing.Size(37, 20);
 			this.FileSubMenu.Text = "&File";
@@ -196,7 +199,7 @@
 			// 
 			this.SaveAsMenuItem.Name = "SaveAsMenuItem";
 			this.SaveAsMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
-            | System.Windows.Forms.Keys.S)));
+			| System.Windows.Forms.Keys.S)));
 			this.SaveAsMenuItem.Size = new System.Drawing.Size(195, 22);
 			this.SaveAsMenuItem.Text = "Save &As...";
 			this.SaveAsMenuItem.Click += new System.EventHandler(this.SaveAsMenuItem_Click);
@@ -204,7 +207,7 @@
 			// RecentSubMenu
 			// 
 			this.RecentSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripSeparator2});
+			this.toolStripSeparator2});
 			this.RecentSubMenu.Image = global::BizHawk.Client.EmuHawk.Properties.Resources.Recent;
 			this.RecentSubMenu.Name = "RecentSubMenu";
 			this.RecentSubMenu.Size = new System.Drawing.Size(195, 22);
@@ -232,11 +235,11 @@
 			// OptionsSubMenu
 			// 
 			this.OptionsSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.MemoryDomainsMenuItem,
-            this.DataSizeMenuItem,
-            this.BigEndianMenuItem,
-            this.toolStripSeparator4,
-            this.TurboWhileBottingMenuItem});
+			this.MemoryDomainsMenuItem,
+			this.DataSizeMenuItem,
+			this.BigEndianMenuItem,
+			this.toolStripSeparator4,
+			this.TurboWhileBottingMenuItem});
 			this.OptionsSubMenu.Name = "OptionsSubMenu";
 			this.OptionsSubMenu.Size = new System.Drawing.Size(61, 20);
 			this.OptionsSubMenu.Text = "&Options";
@@ -245,7 +248,7 @@
 			// MemoryDomainsMenuItem
 			// 
 			this.MemoryDomainsMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripSeparator3});
+			this.toolStripSeparator3});
 			this.MemoryDomainsMenuItem.Name = "MemoryDomainsMenuItem";
 			this.MemoryDomainsMenuItem.Size = new System.Drawing.Size(181, 22);
 			this.MemoryDomainsMenuItem.Text = "Memory Domains";
@@ -259,9 +262,9 @@
 			// DataSizeMenuItem
 			// 
 			this.DataSizeMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this._1ByteMenuItem,
-            this._2ByteMenuItem,
-            this._4ByteMenuItem});
+			this._1ByteMenuItem,
+			this._2ByteMenuItem,
+			this._4ByteMenuItem});
 			this.DataSizeMenuItem.Name = "DataSizeMenuItem";
 			this.DataSizeMenuItem.Size = new System.Drawing.Size(181, 22);
 			this.DataSizeMenuItem.Text = "Data Size";
@@ -322,18 +325,18 @@
 			// BotStatusStrip
 			// 
 			this.BotStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.BotStatusButton,
-            this.MessageLabel});
+			this.BotStatusButton,
+			this.MessageLabel});
 			this.BotStatusStrip.Location = new System.Drawing.Point(0, 565);
 			this.BotStatusStrip.Name = "BotStatusStrip";
-			this.BotStatusStrip.Size = new System.Drawing.Size(687, 22);
+			this.BotStatusStrip.Size = new System.Drawing.Size(707, 22);
 			this.BotStatusStrip.TabIndex = 2;
 			this.BotStatusStrip.Text = "statusStrip1";
 			// 
 			// BotStatusButton
 			// 
 			this.BotStatusButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-			this.BotStatusButton.Image = ((System.Drawing.Image)(resources.GetObject("BotStatusButton.Image")));
+			this.BotStatusButton.Image = global::BizHawk.Client.EmuHawk.Properties.Resources.placeholder_bitmap;
 			this.BotStatusButton.ImageTransparentColor = System.Drawing.Color.Magenta;
 			this.BotStatusButton.Name = "BotStatusButton";
 			this.BotStatusButton.RightToLeftAutoMirrorImage = true;
@@ -345,17 +348,17 @@
 			// 
 			this.MessageLabel.Name = "MessageLabel";
 			this.MessageLabel.Size = new System.Drawing.Size(109, 17);
-			this.MessageLabel.Text = "                                  ";
+			this.MessageLabel.Text = "          ";
 			// 
 			// ControlsBox
 			// 
 			this.ControlsBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Left) 
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.ControlsBox.Controls.Add(this.ControlProbabilityPanel);
 			this.ControlsBox.Location = new System.Drawing.Point(12, 183);
 			this.ControlsBox.Name = "ControlsBox";
-			this.ControlsBox.Size = new System.Drawing.Size(422, 369);
+			this.ControlsBox.Size = new System.Drawing.Size(442, 369);
 			this.ControlsBox.TabIndex = 3;
 			this.ControlsBox.TabStop = false;
 			this.ControlsBox.Text = "Controls";
@@ -363,18 +366,19 @@
 			// ControlProbabilityPanel
 			// 
 			this.ControlProbabilityPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Left) 
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.ControlProbabilityPanel.AutoScroll = true;
 			this.ControlProbabilityPanel.Location = new System.Drawing.Point(6, 19);
 			this.ControlProbabilityPanel.Name = "ControlProbabilityPanel";
-			this.ControlProbabilityPanel.Size = new System.Drawing.Size(410, 350);
+			this.ControlProbabilityPanel.Size = new System.Drawing.Size(430, 350);
 			this.ControlProbabilityPanel.TabIndex = 0;
 			// 
 			// BestGroupBox
 			// 
 			this.BestGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
+			this.BestGroupBox.Controls.Add(this.btnCopyBestInput);
 			this.BestGroupBox.Controls.Add(this.PlayBestButton);
 			this.BestGroupBox.Controls.Add(this.ClearBestButton);
 			this.BestGroupBox.Controls.Add(this.BestAttemptNumberLabel);
@@ -388,12 +392,26 @@
 			this.BestGroupBox.Controls.Add(this.label15);
 			this.BestGroupBox.Controls.Add(this.label14);
 			this.BestGroupBox.Controls.Add(this.label13);
-			this.BestGroupBox.Location = new System.Drawing.Point(441, 183);
+			this.BestGroupBox.Location = new System.Drawing.Point(461, 183);
 			this.BestGroupBox.Name = "BestGroupBox";
 			this.BestGroupBox.Size = new System.Drawing.Size(230, 369);
 			this.BestGroupBox.TabIndex = 4;
 			this.BestGroupBox.TabStop = false;
 			this.BestGroupBox.Text = "Best";
+			// 
+			// btnCopyBestInput
+			// 
+			this.btnCopyBestInput.Image = global::BizHawk.Client.EmuHawk.Properties.Resources.Duplicate;
+			this.btnCopyBestInput.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.btnCopyBestInput.Location = new System.Drawing.Point(12, 94);
+			this.btnCopyBestInput.Name = "btnCopyBestInput";
+			this.btnCopyBestInput.Size = new System.Drawing.Size(75, 23);
+			this.btnCopyBestInput.TabIndex = 2005;
+			this.btnCopyBestInput.Text = "&Copy";
+			this.toolTip1.SetToolTip(this.btnCopyBestInput, "\"Copy to Clipboard.  Then possible to paste to text file or directly into TasStud" +
+					"io.");
+			this.btnCopyBestInput.UseVisualStyleBackColor = true;
+			this.btnCopyBestInput.Click += new System.EventHandler(this.btnCopyBestInput_Click);
 			// 
 			// PlayBestButton
 			// 
@@ -442,15 +460,15 @@
 			// panel1
 			// 
 			this.panel1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Left) 
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.panel1.AutoScroll = true;
 			this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
 			this.panel1.Controls.Add(this.BestAttemptLogLabel);
 			this.panel1.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.panel1.Location = new System.Drawing.Point(12, 112);
+			this.panel1.Location = new System.Drawing.Point(12, 125);
 			this.panel1.Name = "panel1";
-			this.panel1.Size = new System.Drawing.Size(212, 251);
+			this.panel1.Size = new System.Drawing.Size(212, 238);
 			this.panel1.TabIndex = 21;
 			// 
 			// BestAttemptLogLabel
@@ -460,7 +478,7 @@
 			this.BestAttemptLogLabel.Name = "BestAttemptLogLabel";
 			this.BestAttemptLogLabel.Size = new System.Drawing.Size(294, 14);
 			this.BestAttemptLogLabel.TabIndex = 0;
-			this.BestAttemptLogLabel.Text = "                                         ";
+			this.BestAttemptLogLabel.Text = "     ";
 			// 
 			// BestTieBreak3Box
 			// 
@@ -581,7 +599,7 @@
 			// GoalGroupBox
 			// 
 			this.GoalGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.GoalGroupBox.Controls.Add(this.label4);
 			this.GoalGroupBox.Controls.Add(this.FrameLengthNumeric);
 			this.GoalGroupBox.Controls.Add(this.label3);
@@ -591,7 +609,7 @@
 			this.GoalGroupBox.Controls.Add(this.panel6);
 			this.GoalGroupBox.Location = new System.Drawing.Point(12, 27);
 			this.GoalGroupBox.Name = "GoalGroupBox";
-			this.GoalGroupBox.Size = new System.Drawing.Size(422, 150);
+			this.GoalGroupBox.Size = new System.Drawing.Size(442, 150);
 			this.GoalGroupBox.TabIndex = 9;
 			this.GoalGroupBox.TabStop = false;
 			this.GoalGroupBox.Text = " ";
@@ -609,18 +627,18 @@
 			// 
 			this.FrameLengthNumeric.Location = new System.Drawing.Point(60, 25);
 			this.FrameLengthNumeric.Maximum = new decimal(new int[] {
-            999,
-            0,
-            0,
-            0});
+			999,
+			0,
+			0,
+			0});
 			this.FrameLengthNumeric.Name = "FrameLengthNumeric";
 			this.FrameLengthNumeric.Size = new System.Drawing.Size(46, 20);
 			this.FrameLengthNumeric.TabIndex = 1000;
 			this.FrameLengthNumeric.Value = new decimal(new int[] {
-            100,
-            0,
-            0,
-            0});
+			100,
+			0,
+			0,
+			0});
 			this.FrameLengthNumeric.ValueChanged += new System.EventHandler(this.FrameLengthNumeric_ValueChanged);
 			// 
 			// label3
@@ -643,23 +661,23 @@
 			this.panel3.Controls.Add(this.maximizeLabeltext);
 			this.panel3.Location = new System.Drawing.Point(9, 51);
 			this.panel3.Name = "panel3";
-			this.panel3.Size = new System.Drawing.Size(407, 26);
+			this.panel3.Size = new System.Drawing.Size(427, 26);
 			this.panel3.TabIndex = 0;
 			// 
 			// MainValueNumeric
 			// 
 			this.MainValueNumeric.Enabled = false;
-			this.MainValueNumeric.Location = new System.Drawing.Point(336, 4);
+			this.MainValueNumeric.Location = new System.Drawing.Point(357, 4);
 			this.MainValueNumeric.Maximum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            0});
+			100000,
+			0,
+			0,
+			0});
 			this.MainValueNumeric.Minimum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            -2147483648});
+			100000,
+			0,
+			0,
+			-2147483648});
 			this.MainValueNumeric.Name = "MainValueNumeric";
 			this.MainValueNumeric.Size = new System.Drawing.Size(61, 20);
 			this.MainValueNumeric.TabIndex = 1013;
@@ -668,7 +686,7 @@
 			// MainValueRadio
 			// 
 			this.MainValueRadio.AutoSize = true;
-			this.MainValueRadio.Location = new System.Drawing.Point(281, 6);
+			this.MainValueRadio.Location = new System.Drawing.Point(302, 6);
 			this.MainValueRadio.Name = "MainValueRadio";
 			this.MainValueRadio.Size = new System.Drawing.Size(52, 17);
 			this.MainValueRadio.TabIndex = 1012;
@@ -680,7 +698,7 @@
 			// 
 			this.MainBestRadio.AutoSize = true;
 			this.MainBestRadio.Checked = true;
-			this.MainBestRadio.Location = new System.Drawing.Point(235, 6);
+			this.MainBestRadio.Location = new System.Drawing.Point(256, 6);
 			this.MainBestRadio.Name = "MainBestRadio";
 			this.MainBestRadio.Size = new System.Drawing.Size(46, 17);
 			this.MainBestRadio.TabIndex = 1011;
@@ -694,12 +712,12 @@
 			this.MainOperator.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.MainOperator.FormattingEnabled = true;
 			this.MainOperator.Items.AddRange(new object[] {
-            ">",
-            ">=",
-            "=",
-            "<=",
-            "<"});
-			this.MainOperator.Location = new System.Drawing.Point(187, 3);
+			">",
+			">=",
+			"=",
+			"<=",
+			"<"});
+			this.MainOperator.Location = new System.Drawing.Point(208, 3);
 			this.MainOperator.Name = "MainOperator";
 			this.MainOperator.Size = new System.Drawing.Size(40, 21);
 			this.MainOperator.TabIndex = 1010;
@@ -716,12 +734,12 @@
 			// MaximizeAddressBox
 			// 
 			this.MaximizeAddressBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.MaximizeAddressBox.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
 			this.MaximizeAddressBox.Location = new System.Drawing.Point(133, 4);
 			this.MaximizeAddressBox.Name = "MaximizeAddressBox";
 			this.MaximizeAddressBox.Nullable = true;
-			this.MaximizeAddressBox.Size = new System.Drawing.Size(47, 20);
+			this.MaximizeAddressBox.Size = new System.Drawing.Size(67, 20);
 			this.MaximizeAddressBox.TabIndex = 1009;
 			// 
 			// maximizeLabeltext
@@ -744,23 +762,23 @@
 			this.panel4.Controls.Add(this.label10);
 			this.panel4.Location = new System.Drawing.Point(9, 74);
 			this.panel4.Name = "panel4";
-			this.panel4.Size = new System.Drawing.Size(407, 26);
+			this.panel4.Size = new System.Drawing.Size(427, 26);
 			this.panel4.TabIndex = 1;
 			// 
 			// TieBreak1Numeric
 			// 
 			this.TieBreak1Numeric.Enabled = false;
-			this.TieBreak1Numeric.Location = new System.Drawing.Point(336, 4);
+			this.TieBreak1Numeric.Location = new System.Drawing.Point(357, 4);
 			this.TieBreak1Numeric.Maximum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            0});
+			100000,
+			0,
+			0,
+			0});
 			this.TieBreak1Numeric.Minimum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            -2147483648});
+			100000,
+			0,
+			0,
+			-2147483648});
 			this.TieBreak1Numeric.Name = "TieBreak1Numeric";
 			this.TieBreak1Numeric.Size = new System.Drawing.Size(61, 20);
 			this.TieBreak1Numeric.TabIndex = 1013;
@@ -769,7 +787,7 @@
 			// TieBreak1ValueRadio
 			// 
 			this.TieBreak1ValueRadio.AutoSize = true;
-			this.TieBreak1ValueRadio.Location = new System.Drawing.Point(281, 6);
+			this.TieBreak1ValueRadio.Location = new System.Drawing.Point(302, 6);
 			this.TieBreak1ValueRadio.Name = "TieBreak1ValueRadio";
 			this.TieBreak1ValueRadio.Size = new System.Drawing.Size(52, 17);
 			this.TieBreak1ValueRadio.TabIndex = 1012;
@@ -782,12 +800,12 @@
 			this.Tiebreak1Operator.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.Tiebreak1Operator.FormattingEnabled = true;
 			this.Tiebreak1Operator.Items.AddRange(new object[] {
-            ">",
-            ">=",
-            "=",
-            "<=",
-            "<"});
-			this.Tiebreak1Operator.Location = new System.Drawing.Point(187, 3);
+			">",
+			">=",
+			"=",
+			"<=",
+			"<"});
+			this.Tiebreak1Operator.Location = new System.Drawing.Point(208, 3);
 			this.Tiebreak1Operator.Name = "Tiebreak1Operator";
 			this.Tiebreak1Operator.Size = new System.Drawing.Size(40, 21);
 			this.Tiebreak1Operator.TabIndex = 1007;
@@ -796,7 +814,7 @@
 			// 
 			this.TieBreak1BestRadio.AutoSize = true;
 			this.TieBreak1BestRadio.Checked = true;
-			this.TieBreak1BestRadio.Location = new System.Drawing.Point(235, 6);
+			this.TieBreak1BestRadio.Location = new System.Drawing.Point(256, 6);
 			this.TieBreak1BestRadio.Name = "TieBreak1BestRadio";
 			this.TieBreak1BestRadio.Size = new System.Drawing.Size(46, 17);
 			this.TieBreak1BestRadio.TabIndex = 1011;
@@ -817,12 +835,12 @@
 			// TieBreaker1Box
 			// 
 			this.TieBreaker1Box.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.TieBreaker1Box.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
 			this.TieBreaker1Box.Location = new System.Drawing.Point(133, 4);
 			this.TieBreaker1Box.Name = "TieBreaker1Box";
 			this.TieBreaker1Box.Nullable = true;
-			this.TieBreaker1Box.Size = new System.Drawing.Size(47, 20);
+			this.TieBreaker1Box.Size = new System.Drawing.Size(67, 20);
 			this.TieBreaker1Box.TabIndex = 1002;
 			// 
 			// label10
@@ -845,23 +863,23 @@
 			this.panel5.Controls.Add(this.TieBreaker2Box);
 			this.panel5.Location = new System.Drawing.Point(9, 97);
 			this.panel5.Name = "panel5";
-			this.panel5.Size = new System.Drawing.Size(407, 26);
+			this.panel5.Size = new System.Drawing.Size(427, 26);
 			this.panel5.TabIndex = 2;
 			// 
 			// TieBreak2Numeric
 			// 
 			this.TieBreak2Numeric.Enabled = false;
-			this.TieBreak2Numeric.Location = new System.Drawing.Point(336, 4);
+			this.TieBreak2Numeric.Location = new System.Drawing.Point(357, 4);
 			this.TieBreak2Numeric.Maximum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            0});
+			100000,
+			0,
+			0,
+			0});
 			this.TieBreak2Numeric.Minimum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            -2147483648});
+			100000,
+			0,
+			0,
+			-2147483648});
 			this.TieBreak2Numeric.Name = "TieBreak2Numeric";
 			this.TieBreak2Numeric.Size = new System.Drawing.Size(61, 20);
 			this.TieBreak2Numeric.TabIndex = 1013;
@@ -872,12 +890,12 @@
 			this.Tiebreak2Operator.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.Tiebreak2Operator.FormattingEnabled = true;
 			this.Tiebreak2Operator.Items.AddRange(new object[] {
-            ">",
-            ">=",
-            "=",
-            "<=",
-            "<"});
-			this.Tiebreak2Operator.Location = new System.Drawing.Point(187, 3);
+			">",
+			">=",
+			"=",
+			"<=",
+			"<"});
+			this.Tiebreak2Operator.Location = new System.Drawing.Point(208, 3);
 			this.Tiebreak2Operator.Name = "Tiebreak2Operator";
 			this.Tiebreak2Operator.Size = new System.Drawing.Size(40, 21);
 			this.Tiebreak2Operator.TabIndex = 1008;
@@ -885,7 +903,7 @@
 			// TieBreak2ValueRadio
 			// 
 			this.TieBreak2ValueRadio.AutoSize = true;
-			this.TieBreak2ValueRadio.Location = new System.Drawing.Point(281, 6);
+			this.TieBreak2ValueRadio.Location = new System.Drawing.Point(302, 6);
 			this.TieBreak2ValueRadio.Name = "TieBreak2ValueRadio";
 			this.TieBreak2ValueRadio.Size = new System.Drawing.Size(52, 17);
 			this.TieBreak2ValueRadio.TabIndex = 1012;
@@ -897,7 +915,7 @@
 			// 
 			this.TieBreak2BestRadio.AutoSize = true;
 			this.TieBreak2BestRadio.Checked = true;
-			this.TieBreak2BestRadio.Location = new System.Drawing.Point(235, 6);
+			this.TieBreak2BestRadio.Location = new System.Drawing.Point(256, 6);
 			this.TieBreak2BestRadio.Name = "TieBreak2BestRadio";
 			this.TieBreak2BestRadio.Size = new System.Drawing.Size(46, 17);
 			this.TieBreak2BestRadio.TabIndex = 1011;
@@ -927,12 +945,12 @@
 			// TieBreaker2Box
 			// 
 			this.TieBreaker2Box.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.TieBreaker2Box.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
 			this.TieBreaker2Box.Location = new System.Drawing.Point(133, 4);
 			this.TieBreaker2Box.Name = "TieBreaker2Box";
 			this.TieBreaker2Box.Nullable = true;
-			this.TieBreaker2Box.Size = new System.Drawing.Size(47, 20);
+			this.TieBreaker2Box.Size = new System.Drawing.Size(67, 20);
 			this.TieBreaker2Box.TabIndex = 1003;
 			// 
 			// panel6
@@ -946,7 +964,7 @@
 			this.panel6.Controls.Add(this.Tiebreak3Operator);
 			this.panel6.Location = new System.Drawing.Point(9, 120);
 			this.panel6.Name = "panel6";
-			this.panel6.Size = new System.Drawing.Size(407, 26);
+			this.panel6.Size = new System.Drawing.Size(427, 26);
 			this.panel6.TabIndex = 3;
 			// 
 			// label12
@@ -970,28 +988,28 @@
 			// TieBreaker3Box
 			// 
 			this.TieBreaker3Box.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.TieBreaker3Box.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
 			this.TieBreaker3Box.Location = new System.Drawing.Point(133, 4);
 			this.TieBreaker3Box.Name = "TieBreaker3Box";
 			this.TieBreaker3Box.Nullable = true;
-			this.TieBreaker3Box.Size = new System.Drawing.Size(47, 20);
+			this.TieBreaker3Box.Size = new System.Drawing.Size(67, 20);
 			this.TieBreaker3Box.TabIndex = 1016;
 			// 
 			// TieBreak3Numeric
 			// 
 			this.TieBreak3Numeric.Enabled = false;
-			this.TieBreak3Numeric.Location = new System.Drawing.Point(336, 4);
+			this.TieBreak3Numeric.Location = new System.Drawing.Point(357, 4);
 			this.TieBreak3Numeric.Maximum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            0});
+			100000,
+			0,
+			0,
+			0});
 			this.TieBreak3Numeric.Minimum = new decimal(new int[] {
-            100000,
-            0,
-            0,
-            -2147483648});
+			100000,
+			0,
+			0,
+			-2147483648});
 			this.TieBreak3Numeric.Name = "TieBreak3Numeric";
 			this.TieBreak3Numeric.Size = new System.Drawing.Size(61, 20);
 			this.TieBreak3Numeric.TabIndex = 1013;
@@ -1000,7 +1018,7 @@
 			// TieBreak3ValueRadio
 			// 
 			this.TieBreak3ValueRadio.AutoSize = true;
-			this.TieBreak3ValueRadio.Location = new System.Drawing.Point(281, 6);
+			this.TieBreak3ValueRadio.Location = new System.Drawing.Point(302, 6);
 			this.TieBreak3ValueRadio.Name = "TieBreak3ValueRadio";
 			this.TieBreak3ValueRadio.Size = new System.Drawing.Size(52, 17);
 			this.TieBreak3ValueRadio.TabIndex = 1012;
@@ -1012,7 +1030,7 @@
 			// 
 			this.TieBreak3BestRadio.AutoSize = true;
 			this.TieBreak3BestRadio.Checked = true;
-			this.TieBreak3BestRadio.Location = new System.Drawing.Point(235, 6);
+			this.TieBreak3BestRadio.Location = new System.Drawing.Point(256, 6);
 			this.TieBreak3BestRadio.Name = "TieBreak3BestRadio";
 			this.TieBreak3BestRadio.Size = new System.Drawing.Size(46, 17);
 			this.TieBreak3BestRadio.TabIndex = 1011;
@@ -1026,12 +1044,12 @@
 			this.Tiebreak3Operator.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.Tiebreak3Operator.FormattingEnabled = true;
 			this.Tiebreak3Operator.Items.AddRange(new object[] {
-            ">",
-            ">=",
-            "=",
-            "<=",
-            "<"});
-			this.Tiebreak3Operator.Location = new System.Drawing.Point(187, 3);
+			">",
+			">=",
+			"=",
+			"<=",
+			"<"});
+			this.Tiebreak3Operator.Location = new System.Drawing.Point(208, 3);
 			this.Tiebreak3Operator.Name = "Tiebreak3Operator";
 			this.Tiebreak3Operator.Size = new System.Drawing.Size(40, 21);
 			this.Tiebreak3Operator.TabIndex = 1017;
@@ -1063,16 +1081,16 @@
 			this.StartFromSlotBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.StartFromSlotBox.FormattingEnabled = true;
 			this.StartFromSlotBox.Items.AddRange(new object[] {
-            "Slot 0",
-            "Slot 1",
-            "Slot 2",
-            "Slot 3",
-            "Slot 4",
-            "Slot 5",
-            "Slot 6",
-            "Slot 7",
-            "Slot 8",
-            "Slot 9"});
+			"Slot 0",
+			"Slot 1",
+			"Slot 2",
+			"Slot 3",
+			"Slot 4",
+			"Slot 5",
+			"Slot 6",
+			"Slot 7",
+			"Slot 8",
+			"Slot 9"});
 			this.StartFromSlotBox.Location = new System.Drawing.Point(71, 25);
 			this.StartFromSlotBox.Name = "StartFromSlotBox";
 			this.StartFromSlotBox.Size = new System.Drawing.Size(75, 21);
@@ -1086,7 +1104,7 @@
 			this.ControlGroupBox.Controls.Add(this.RunBtn);
 			this.ControlGroupBox.Controls.Add(this.StartFromSlotBox);
 			this.ControlGroupBox.Controls.Add(this.label8);
-			this.ControlGroupBox.Location = new System.Drawing.Point(440, 27);
+			this.ControlGroupBox.Location = new System.Drawing.Point(460, 27);
 			this.ControlGroupBox.Name = "ControlGroupBox";
 			this.ControlGroupBox.Size = new System.Drawing.Size(230, 150);
 			this.ControlGroupBox.TabIndex = 2004;
@@ -1108,7 +1126,7 @@
 			// StatsContextMenu
 			// 
 			this.StatsContextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.ClearStatsContextMenuItem});
+			this.ClearStatsContextMenuItem});
 			this.StatsContextMenu.Name = "StatsContextMenu";
 			this.StatsContextMenu.Size = new System.Drawing.Size(102, 26);
 			// 
@@ -1119,25 +1137,31 @@
 			this.ClearStatsContextMenuItem.Text = "&Clear";
 			this.ClearStatsContextMenuItem.Click += new System.EventHandler(this.ClearStatsContextMenuItem_Click);
 			// 
+			// helpToolStripMenuItem
+			// 
+			this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+			this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
+			this.helpToolStripMenuItem.Text = "Help";
+			this.helpToolStripMenuItem.Click += new System.EventHandler(this.HelpToolStripMenuItem_Click);
+			// 
 			// BasicBot
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.AutoSize = true;
 			this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-			this.ClientSize = new System.Drawing.Size(687, 587);
+			this.ClientSize = new System.Drawing.Size(707, 587);
 			this.Controls.Add(this.ControlGroupBox);
 			this.Controls.Add(this.GoalGroupBox);
 			this.Controls.Add(this.BestGroupBox);
 			this.Controls.Add(this.ControlsBox);
 			this.Controls.Add(this.BotStatusStrip);
 			this.Controls.Add(this.BotMenu);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+			this.Icon = global::BizHawk.Client.EmuHawk.Properties.Resources.basicbot;
 			this.MainMenuStrip = this.BotMenu;
 			this.Name = "BasicBot";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
 			this.Text = "Basic Bot";
-			this.Load += new System.EventHandler(this.BasicBot_Load);
 			this.BotMenu.ResumeLayout(false);
 			this.BotMenu.PerformLayout();
 			this.BotStatusStrip.ResumeLayout(false);
@@ -1169,7 +1193,6 @@
 			this.StatsContextMenu.ResumeLayout(false);
 			this.ResumeLayout(false);
 			this.PerformLayout();
-
 		}
 
 		#endregion
@@ -1262,5 +1285,8 @@
 		private System.Windows.Forms.Label label9;
 		private HexTextBox MaximizeAddressBox;
 		private System.Windows.Forms.Label maximizeLabeltext;
+		private System.Windows.Forms.Button btnCopyBestInput;
+		private System.Windows.Forms.ToolTip toolTip1;
+		private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
 	}
 }

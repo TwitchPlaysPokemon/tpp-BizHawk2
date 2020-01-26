@@ -14,8 +14,8 @@ namespace BizHawk.Client.EmuHawk
 			ControllerState = controllerState;
 		}
 
-		public int Frame { get; private set; }
-		public IController ControllerState { get; private set; }
+		public int Frame { get; }
+		public IController ControllerState { get; }
 
 		public override string ToString()
 		{
@@ -32,19 +32,19 @@ namespace BizHawk.Client.EmuHawk
 
 				foreach (var button in lg.Definition.BoolButtons)
 				{
-					Global.LuaAndAdaptor.SetButton(button, lg.IsPressed(button));
+					Global.ButtonOverrideAdaptor.SetButton(button, lg.IsPressed(button));
 				}
 
 				foreach (var floatButton in lg.Definition.FloatControls)
 				{
-					Global.LuaAndAdaptor.SetFloat(floatButton, lg.GetFloat(floatButton));
+					Global.ButtonOverrideAdaptor.SetFloat(floatButton, lg.GetFloat(floatButton));
 				}
 
 				return lg;
 			}
 			catch (Exception)
 			{
-				MessageBox.Show("Invalid mnemonic string: " + inputLogEntry, "Paste Input failed!");
+				MessageBox.Show($"Invalid mnemonic string: {inputLogEntry}", "Paste Input failed!");
 				return null;
 			}
 		}

@@ -4,6 +4,7 @@ using System.Linq;
 
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Nintendo.Gameboy;
+using BizHawk.Emulation.Cores.Nintendo.SubNESHawk;
 using BizHawk.Emulation.Cores.Sega.MasterSystem;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
 using BizHawk.Emulation.Cores.Consoles.Sega.gpgx;
@@ -15,7 +16,7 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 	{
 		public static TasMovie ToTasMovie(this IMovie old, bool copy = false)
 		{
-			string newFilename = old.Filename + "." + TasMovie.Extension;
+			string newFilename = $"{old.Filename}.{TasMovie.Extension}";
 
 			if (File.Exists(newFilename))
 			{
@@ -25,7 +26,7 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 				{
 					if (File.Exists(newFilename))
 					{
-						newFilename = old.Filename + " (" + fileNum + ")" + "." + TasMovie.Extension;
+						newFilename = $"{old.Filename} ({fileNum}).{TasMovie.Extension}";
 						fileNum++;
 					}
 					else
@@ -36,7 +37,6 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 			}
 
 			var tas = new TasMovie(newFilename, old.StartsFromSavestate);
-			tas.TasStateManager.MountWriteAccess();
 
 			for (var i = 0; i < old.InputLogLength; i++)
 			{
@@ -125,7 +125,17 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 
 		public static TasMovie ConvertToSavestateAnchoredMovie(this TasMovie old, int frame, byte[] savestate)
 		{
-			string newFilename = old.Filename + "." + TasMovie.Extension;
+			string newFilename = old.Filename;
+
+			if (old.Filename.Contains("tasproj"))
+			{
+				newFilename = newFilename.Remove(newFilename.Length - 7, 7);
+				newFilename = $"{newFilename}nfn.{TasMovie.Extension}";
+			}
+			else
+			{
+				newFilename = $"{old.Filename}.{TasMovie.Extension}";
+			}
 
 			if (File.Exists(newFilename))
 			{
@@ -135,7 +145,7 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 				{
 					if (File.Exists(newFilename))
 					{
-						newFilename = old.Filename + " (" + fileNum + ")" + "." + TasMovie.Extension;
+						newFilename = $"{old.Filename} ({fileNum}).{TasMovie.Extension}";
 						fileNum++;
 					}
 					else
@@ -156,7 +166,6 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 
 			// States can't be easily moved over, because they contain the frame number.
 			// TODO? I'm not sure how this would be done.
-			tas.TasStateManager.MountWriteAccess();
 			old.TasStateManager.Clear();
 
 			// Lag Log
@@ -200,7 +209,17 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 
 		public static TasMovie ConvertToSaveRamAnchoredMovie(this TasMovie old, byte[] saveRam)
 		{
-			string newFilename = old.Filename + "." + TasMovie.Extension;
+			string newFilename = old.Filename;
+
+			if (old.Filename.Contains("tasproj"))
+			{
+				newFilename = newFilename.Remove(newFilename.Length - 7, 7);
+				newFilename = $"{newFilename}nfsr.{TasMovie.Extension}";
+			}
+			else
+			{
+				newFilename = $"{old.Filename}.{TasMovie.Extension}";
+			}
 
 			if (File.Exists(newFilename))
 			{
@@ -210,7 +229,7 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 				{
 					if (File.Exists(newFilename))
 					{
-						newFilename = old.Filename + " (" + fileNum + ")" + "." + TasMovie.Extension;
+						newFilename = $"{old.Filename} ({fileNum}).{TasMovie.Extension}";
 						fileNum++;
 					}
 					else
@@ -302,7 +321,7 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 			{
 				foreach (var firmware in Global.FirmwareManager.RecentlyServed)
 				{
-					var key = firmware.SystemId + "_Firmware_" + firmware.FirmwareId;
+					var key = $"{firmware.SystemId}_Firmware_{firmware.FirmwareId}";
 
 					if (!movie.HeaderEntries.ContainsKey(key))
 					{
@@ -311,22 +330,27 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 				}
 			}
 
-			if (Global.Emulator is Gameboy && (Global.Emulator as Gameboy).IsCGBMode())
+			if (Global.Emulator is Gameboy && ((Gameboy) Global.Emulator).IsCGBMode())
 			{
 				movie.HeaderEntries.Add("IsCGBMode", "1");
 			}
 
-			if (Global.Emulator is SMS && (Global.Emulator as SMS).IsSG1000)
+			if (Global.Emulator is Gameboy)
+			{
+				movie.HeaderEntries.Add("CycleCount", "0");
+			}
+
+			if (Global.Emulator is SMS && ((SMS) Global.Emulator).IsSG1000)
 			{
 				movie.HeaderEntries.Add("IsSGMode", "1");
 			}
 
-			if (Global.Emulator is SMS && (Global.Emulator as SMS).IsGameGear)
+			if (Global.Emulator is SMS && ((SMS) Global.Emulator).IsGameGear)
 			{
 				movie.HeaderEntries.Add("IsGGMode", "1");
 			}
 
-			if (Global.Emulator is GPGX && (Global.Emulator as GPGX).IsMegaCD)
+			if (Global.Emulator is GPGX && ((GPGX) Global.Emulator).IsMegaCD)
 			{
 				movie.HeaderEntries.Add("IsSegaCDMode", "1");
 			}
@@ -334,6 +358,11 @@ namespace BizHawk.Client.Common.MovieConversionExtensions
 			if (Global.Emulator is PicoDrive && Global.Game["32X"])
 			{
 				movie.HeaderEntries.Add("Is32X", "1");
+			}
+
+			if (Global.Emulator is SubNESHawk)
+			{
+				movie.HeaderEntries.Add("VBlankCount", "0");
 			}
 
 			movie.Core = ((CoreAttribute)Attribute

@@ -1,6 +1,6 @@
 ﻿using System.IO;
-using System.Linq;
 
+using BizHawk.Common;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
 
 namespace BizHawk.Client.Common
@@ -29,28 +29,20 @@ namespace BizHawk.Client.Common
 
 			for (int i = 0; i < 10; i++)
 			{
-				var file = new FileInfo(
-					PathManager.SaveStatePrefix(Global.Game) + "." + "QuickSave" + i + ".State");
-				if (file.Directory != null && file.Directory.Exists == false)
+				if (Global.MovieSession.Movie is TasMovie tasMovie)
 				{
-					file.Directory.Create();
+					_slots[i] = i < tasMovie.Branches.Count;
 				}
-
-				_slots[i] = file.Exists;
-			}
-		}
-
-		public bool HasSavestateSlots
-		{
-			get
-			{
-				if (!Global.Emulator.HasSavestates())
+				else
 				{
-					return false;
-				}
+					var file = new FileInfo($"{PathManager.SaveStatePrefix(Global.Game)}.QuickSave{i}.State");
+					if (file.Directory != null && file.Directory.Exists == false)
+					{
+						file.Directory.Create();
+					}
 
-				Update();
-				return _slots.Any(slot => slot);
+					_slots[i] = file.Exists;
+				}
 			}
 		}
 
@@ -61,7 +53,7 @@ namespace BizHawk.Client.Common
 				return false;
 			}
 
-			if (slot < 0 || slot > 10)
+			if (!0.RangeTo(10).Contains(slot))
 			{
 				return false;
 			}
@@ -80,36 +72,17 @@ namespace BizHawk.Client.Common
 
 		public void ToggleRedo(int slot)
 		{
-			if (slot < 0 || slot > 9)
-			{
-				return;
-			}
-
-			_redo[slot] ^= true;
+			if (0.RangeTo(9).Contains(slot) && !(Global.MovieSession.Movie is TasMovie)) _redo[slot] ^= true;
 		}
 
-		public bool IsRedo(int slot)
-		{
-			if (slot < 0 || slot > 9)
-			{
-				return false;
-			}
-
-			return _redo[slot];
-		}
-
-		public void Clear()
-		{
-			ClearRedoList();
-			Update();
-		}
+		public bool IsRedo(int slot) => 0.RangeTo(9).Contains(slot) && !(Global.MovieSession.Movie is TasMovie) && _redo[slot];
 
 		public void SwapBackupSavestate(string path)
 		{
 			// Takes the .state and .bak files and swaps them
 			var state = new FileInfo(path);
-			var backup = new FileInfo(path + ".bak");
-			var temp = new FileInfo(path + ".bak.tmp");
+			var backup = new FileInfo($"{path}.bak");
+			var temp = new FileInfo($"{path}.bak.tmp");
 
 			if (!state.Exists || !backup.Exists)
 			{
@@ -121,9 +94,9 @@ namespace BizHawk.Client.Common
 				temp.Delete();
 			}
 
-			backup.CopyTo(path + ".bak.tmp");
+			backup.CopyTo($"{path}.bak.tmp");
 			backup.Delete();
-			state.CopyTo(path + ".bak");
+			state.CopyTo($"{path}.bak");
 			state.Delete();
 			temp.CopyTo(path);
 			temp.Delete();

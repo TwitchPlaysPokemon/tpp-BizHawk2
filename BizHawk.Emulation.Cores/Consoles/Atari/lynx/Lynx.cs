@@ -27,8 +27,8 @@ namespace BizHawk.Emulation.Cores.Atari.Lynx
 			byte[] realfile = null;
 
 			{
-				var ms = new MemoryStream(file, false);
-				var br = new BinaryReader(ms);
+				using var ms = new MemoryStream(file, false);
+				using var br = new BinaryReader(ms);
 				string header = Encoding.ASCII.GetString(br.ReadBytes(4));
 				int p0 = br.ReadUInt16();
 				int p1 = br.ReadUInt16();
@@ -92,8 +92,8 @@ namespace BizHawk.Emulation.Cores.Atari.Lynx
 			Core = LibLynx.Create(realfile, realfile.Length, bios, bios.Length, pagesize0, pagesize1, false);
 			try
 			{
-				_savebuff = new byte[LibLynx.BinStateSize(Core)];
-				_savebuff2 = new byte[_savebuff.Length + 13];
+				_saveBuff = new byte[LibLynx.BinStateSize(Core)];
+				_saveBuff2 = new byte[_saveBuff.Length + 13];
 
 				int rot = game.OptionPresent("rotate") ? int.Parse(game.OptionValue("rotate")) : 0;
 				LibLynx.SetRotation(Core, rot);
@@ -120,7 +120,7 @@ namespace BizHawk.Emulation.Cores.Atari.Lynx
 
 		public IEmulatorServiceProvider ServiceProvider { get; }
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound = true)
+		public bool FrameAdvance(IController controller, bool render, bool rendersound = true)
 		{
 			Frame++;
 			if (controller.IsPressed("Power"))
@@ -128,13 +128,15 @@ namespace BizHawk.Emulation.Cores.Atari.Lynx
 				LibLynx.Reset(Core);
 			}
 
-			int samples = _soundbuff.Length;
-			IsLagFrame = LibLynx.Advance(Core, GetButtons(controller), _videobuff, _soundbuff, ref samples);
-			_numsamp = samples / 2; // sound provider wants number of sample pairs
+			int samples = _soundBuff.Length;
+			IsLagFrame = LibLynx.Advance(Core, GetButtons(controller), _videoBuff, _soundBuff, ref samples);
+			_numSamp = samples / 2; // sound provider wants number of sample pairs
 			if (IsLagFrame)
 			{
 				LagCount++;
 			}
+
+			return true;
 		}
 
 		public int Frame { get; private set; }
@@ -169,7 +171,7 @@ namespace BizHawk.Emulation.Cores.Atari.Lynx
 			BoolButtons = { "Up", "Down", "Left", "Right", "A", "B", "Option 1", "Option 2", "Pause", "Power" },
 		};
 
-		public ControllerDefinition ControllerDefinition { get { return LynxTroller; } }
+		public ControllerDefinition ControllerDefinition => LynxTroller;
 
 		private LibLynx.Buttons GetButtons(IController controller)
 		{

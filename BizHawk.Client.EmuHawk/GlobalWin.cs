@@ -17,7 +17,7 @@ namespace BizHawk.Client.EmuHawk
 		/// <summary>
 		/// The IGL_TK to be used for specifically opengl operations (accessing textures from opengl-based cores)
 		/// </summary>
-		public static Bizware.BizwareGL.Drivers.OpenTK.IGL_TK IGL_GL;
+		public static IGL_TK IGL_GL;
 
 		public static Sound Sound;
 		public static readonly OSDManager OSD = new OSDManager();
@@ -27,5 +27,8 @@ namespace BizHawk.Client.EmuHawk
 		public static PublicApi API;
 
 		public static int ExitCode;
+		public static Communication.HttpCommunication httpCommunication = null;
+		public static Communication.SocketServer socketServer = null;
+		public static Communication.MemoryMappedFiles memoryMappedFiles = null;
 	}
 }

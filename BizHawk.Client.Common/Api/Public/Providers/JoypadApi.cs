@@ -116,9 +116,9 @@ namespace BizHawk.Client.Common.Api.Public.Providers
 			{
 				foreach (var button in value.Where(b => b != "Hold"))
 				{
-					Global.LuaAndAdaptor.SetButton(button, true);
+					Global.ButtonOverrideAdaptor.SetButton(button, true);
 				}
-				Global.ActiveController.Overrides(Global.LuaAndAdaptor);
+				Global.ActiveController.Overrides(Global.ButtonOverrideAdaptor);
 			}
 		}
 

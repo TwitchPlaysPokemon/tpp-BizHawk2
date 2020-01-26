@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 
 using BizHawk.Client.Common;
+using BizHawk.Common;
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Client.EmuHawk
@@ -84,23 +85,14 @@ namespace BizHawk.Client.EmuHawk
 		{
 			try
 			{
-				_ffmpeg = new Process();
-#if WINDOWS
-				_ffmpeg.StartInfo.FileName = Path.Combine(PathManager.GetDllDirectory(), "ffmpeg.exe");
-#else
-				ffmpeg.StartInfo.FileName = "ffmpeg"; // expecting native version to be in path
-#endif
+				_ffmpeg = OSTailoredCode.ConstructSubshell(
+					OSTailoredCode.IsUnixHost ? "ffmpeg" : Path.Combine(PathManager.GetDllDirectory(), "ffmpeg.exe"),
+					$"-y -f nut -i - {_token.Commandline} \"{_baseName}{(_segment == 0 ? string.Empty : $"_{_segment}")}{_ext}\"",
+					checkStdout: false,
+					checkStderr: true // ffmpeg sends informative display to stderr, and nothing to stdout
+				);
 
-				string filename = $"{_baseName}_{_segment,4:D4}{_ext}";
-				_ffmpeg.StartInfo.Arguments = string.Format("-y -f nut -i - {1} \"{0}\"", filename, _token.Commandline);
-				_ffmpeg.StartInfo.CreateNoWindow = true;
-
-				// ffmpeg sends informative display to stderr, and nothing to stdout
-				_ffmpeg.StartInfo.RedirectStandardError = true;
-				_ffmpeg.StartInfo.RedirectStandardInput = true;
-				_ffmpeg.StartInfo.UseShellExecute = false;
-
-				_commandline = "ffmpeg " + _ffmpeg.StartInfo.Arguments;
+				_commandline = $"ffmpeg {_ffmpeg.StartInfo.Arguments}";
 
 				_ffmpeg.ErrorDataReceived += new DataReceivedEventHandler(StderrHandler);
 
@@ -132,7 +124,7 @@ namespace BizHawk.Client.EmuHawk
 					_stderr.Dequeue();
 				}
 
-				_stderr.Enqueue(line.Data + "\n");
+				_stderr.Enqueue($"{line.Data}\n");
 			}
 		}
 
@@ -163,7 +155,6 @@ namespace BizHawk.Client.EmuHawk
 		/// <summary>
 		/// returns a string containing the commandline sent to ffmpeg and recent console (stderr) output
 		/// </summary>
-		/// <returns></returns>
 		private string ffmpeg_geterror()
 		{
 			if (_ffmpeg.StartInfo.RedirectStandardError)
@@ -183,7 +174,7 @@ namespace BizHawk.Client.EmuHawk
 			return s.ToString();
 		}
 
-
+		/// <exception cref="Exception">FFmpeg call failed</exception>
 		public void AddFrame(IVideoProvider source)
 		{
 			if (source.BufferWidth != width || source.BufferHeight != height)
@@ -193,7 +184,7 @@ namespace BizHawk.Client.EmuHawk
 
 			if (_ffmpeg.HasExited)
 			{
-				throw new Exception("unexpected ffmpeg death:\n" + ffmpeg_geterror());
+				throw new Exception($"unexpected ffmpeg death:\n{ffmpeg_geterror()}");
 			}
 
 			var video = source.GetVideoBuffer();
@@ -203,7 +194,7 @@ namespace BizHawk.Client.EmuHawk
 			}
 			catch
 			{
-				MessageBox.Show("Exception! ffmpeg history:\n" + ffmpeg_geterror());
+				MessageBox.Show($"Exception! ffmpeg history:\n{ffmpeg_geterror()}");
 				throw;
 			}
 
@@ -215,7 +206,8 @@ namespace BizHawk.Client.EmuHawk
 		{
 			return FFmpegWriterForm.DoFFmpegWriterDlg(hwnd);
 		}
-	
+
+		/// <exception cref="ArgumentException"><paramref name="token"/> does not inherit <see cref="FFmpegWriterForm.FormatPreset"/></exception>
 		public void SetVideoCodecToken(IDisposable token)
 		{
 			if (token is FFmpegWriterForm.FormatPreset)
@@ -224,7 +216,7 @@ namespace BizHawk.Client.EmuHawk
 			}
 			else
 			{
-				throw new ArgumentException("FFmpegWriter can only take its own codec tokens!");
+				throw new ArgumentException($"{nameof(FFmpegWriter)} can only take its own codec tokens!");
 			}
 		}
 
@@ -233,10 +225,10 @@ namespace BizHawk.Client.EmuHawk
 		/// </summary>
 		private int fpsnum, fpsden, width, height, sampleRate, channels;
 
-		public void SetMovieParameters(int fpsnum, int fpsden)
+		public void SetMovieParameters(int fpsNum, int fpsDen)
 		{
-			this.fpsnum = fpsnum;
-			this.fpsden = fpsden;
+			this.fpsnum = fpsNum;
+			this.fpsden = fpsDen;
 		}
 
 		public void SetVideoParameters(int width, int height)
@@ -270,11 +262,12 @@ namespace BizHawk.Client.EmuHawk
 			}
 		}
 
+		/// <exception cref="Exception">FFmpeg call failed</exception>
 		public void AddSamples(short[] samples)
 		{
 			if (_ffmpeg.HasExited)
 			{
-				throw new Exception("unexpected ffmpeg death:\n" + ffmpeg_geterror());
+				throw new Exception($"unexpected ffmpeg death:\n{ffmpeg_geterror()}");
 			}
 
 			if (samples.Length == 0)
@@ -289,11 +282,12 @@ namespace BizHawk.Client.EmuHawk
 			}
 			catch
 			{
-				MessageBox.Show("Exception! ffmpeg history:\n" + ffmpeg_geterror());
+				MessageBox.Show($"Exception! ffmpeg history:\n{ffmpeg_geterror()}");
 				throw;
 			}
 		}
 
+		/// <exception cref="ArgumentOutOfRangeException"><paramref name="bits"/> is not <c>16</c></exception>
 		public void SetAudioParameters(int sampleRate, int channels, int bits)
 		{
 			if (bits != 16)
@@ -308,7 +302,7 @@ namespace BizHawk.Client.EmuHawk
 		public string DesiredExtension()
 		{
 			// this needs to interface with the codec token
-			return _token.Defaultext;
+			return _token.Extension;
 		}
 
 		public void SetDefaultVideoCodecToken()

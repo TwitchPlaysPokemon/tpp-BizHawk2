@@ -39,11 +39,12 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 		private bool _filterSelectHiPass;
 		private int _mixer;
 		private short[] _outputBuffer;
-		private int[] _outputBuffer_filtered;
-		private int[] _outputBuffer_not_filtered;
+		private readonly int[] _outputBufferFiltered;
+		private readonly int[] _outputBufferNotFiltered;
+		private readonly int[] _volumeAtSampleTime;
 		private int _outputBufferIndex;
-		private int filter_index;
-		private int last_filtered_value;
+		private int _filterIndex;
+		private int _lastFilteredValue;
 		private int _potCounter;
 		private int _potX;
 		private int _potY;
@@ -60,7 +61,8 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 		public Func<int> ReadPotX;
 		public Func<int> ReadPotY;
 
-		public RealFFT fft;
+		private RealFFT _fft;
+		private double[] _fftBuffer = new double[0];
 
 		private readonly int _cpuCyclesNum;
 		private int _sampleCyclesNum;
@@ -91,8 +93,9 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 			for (var i = 0; i < 3; i++)
 				_filterEnable[i] = false;
 
-			_outputBuffer_filtered = new int[sampleRate];
-			_outputBuffer_not_filtered = new int[sampleRate];
+			_outputBufferFiltered = new int[sampleRate];
+			_outputBufferNotFiltered = new int[sampleRate];
+			_volumeAtSampleTime = new int[sampleRate];
 		}
 
 		// ------------------------------------
@@ -107,6 +110,15 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 			_potCounter = 0;
 			_potX = 0;
 			_potY = 0;
+			_filterEnable[0] = false;
+			_filterEnable[1] = false;
+			_filterEnable[2] = false;
+			_filterFrequency = 0;
+			_filterSelectBandPass = false;
+			_filterSelectHiPass = false;
+			_filterSelectLoPass = false;
+			_filterResonance = 0;
+			_volume = 0;
 		}
 
 		// ------------------------------------
@@ -188,8 +200,9 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 
 					if (_outputBufferIndex < _sampleRate)
 					{
-						_outputBuffer_not_filtered[_outputBufferIndex] = temp_not_filtered;
-						_outputBuffer_filtered[_outputBufferIndex] = temp_filtered;
+						_outputBufferNotFiltered[_outputBufferIndex] = temp_not_filtered;
+						_outputBufferFiltered[_outputBufferIndex] = temp_filtered;
+						_volumeAtSampleTime[_outputBufferIndex] = _volume;
 						_outputBufferIndex++;
 					}
 				}
@@ -199,7 +212,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 			{
 				if (_filterEnable[0] | _filterEnable[1] | _filterEnable[2])
 				{
-					if ((_outputBufferIndex - filter_index) >= 16)
+					if ((_outputBufferIndex - _filterIndex) >= 16)
 					{
 						filter_operator();
 					}
@@ -207,22 +220,22 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					{
 						// the length is too short for the FFT to reliably act on the output
 						// instead, clamp it to the previous output.
-						for (int i = filter_index; i < _outputBufferIndex; i++)
+						for (int i = _filterIndex; i < _outputBufferIndex; i++)
 						{
-							_outputBuffer_filtered[i] = last_filtered_value;
+							_outputBufferFiltered[i] = _lastFilteredValue;
 						}
 					}
 				}
 
-				filter_index = _outputBufferIndex;
+				_filterIndex = _outputBufferIndex;
 				if (_outputBufferIndex>0)
-					last_filtered_value = _outputBuffer_filtered[_outputBufferIndex - 1];
+					_lastFilteredValue = _outputBufferFiltered[_outputBufferIndex - 1];
 			}
 
 			// if the filter is off, keep updating the filter index to the most recent Flush
 			if (!(_filterEnable[0] | _filterEnable[1] | _filterEnable[2]))
 			{
-				filter_index = _outputBufferIndex;
+				_filterIndex = _outputBufferIndex;
 			}	
 		}
 
@@ -233,7 +246,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 
 			double attenuation;
 
-			int nsamp = _outputBufferIndex - filter_index;
+			int nsamp = _outputBufferIndex - _filterIndex;
 
 			// pass the list of filtered samples to the FFT
 			// but needs to be a power of 2, so find the next highest power of 2 and re-sample
@@ -248,18 +261,20 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				}
 			}
 
-			fft = new RealFFT(nsamp_2);
+			_fft = new RealFFT(nsamp_2);
 
-			double[] temp_buffer = new double[nsamp_2];
+			// eventually this will settle on a single buffer size and stop reallocating
+			if (_fftBuffer.Length < nsamp_2)
+				Array.Resize(ref _fftBuffer, nsamp_2);
 
 			// linearly interpolate the original sample set into the new denser sample set
 			for (double i = 0; i < nsamp_2; i++)
 			{
-				temp_buffer[(int)i] = _outputBuffer_filtered[(int)Math.Floor((i / (nsamp_2-1) * (nsamp - 1))) + filter_index];
+				_fftBuffer[(int)i] = _outputBufferFiltered[(int)Math.Floor((i / (nsamp_2-1) * (nsamp - 1))) + _filterIndex];
 			}
 
 			// now we have everything we need to perform the FFT
-			fft.ComputeForward(temp_buffer);
+			_fft.ComputeForward(_fftBuffer);
 
 			// for each element in the frequency list, attenuate it according to the specs
 			for (int i = 1; i < nsamp_2; i++)
@@ -270,7 +285,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				// let's assume that frequencies near the peak are doubled in strength at max resonance
 				if ((1.2 > freq / loc_filterFrequency) && (freq / loc_filterFrequency > 0.8 ))
 				{
-					temp_buffer[i] = temp_buffer[i] * (1 + (double)_filterResonance/15);
+					_fftBuffer[i] = _fftBuffer[i] * (1 + (double)_filterResonance/15);
 				}
 
 				// low pass filter
@@ -279,7 +294,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					//attenuated at 12db per octave
 					attenuation = Math.Log(freq / loc_filterFrequency, 2);
 					attenuation = 12 * attenuation;
-					temp_buffer[i] = temp_buffer[i] * Math.Pow(2, -attenuation / 10);
+					_fftBuffer[i] = _fftBuffer[i] * Math.Pow(2, -attenuation / 10);
 				}
 
 				// High pass filter
@@ -288,7 +303,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					//attenuated at 12db per octave
 					attenuation = Math.Log(loc_filterFrequency / freq, 2);
 					attenuation = 12 * attenuation;
-					temp_buffer[i] = temp_buffer[i] * Math.Pow(2, -attenuation / 10);
+					_fftBuffer[i] = _fftBuffer[i] * Math.Pow(2, -attenuation / 10);
 				}
 				
 				// Band pass filter
@@ -297,23 +312,23 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 					//attenuated at 6db per octave
 					attenuation = Math.Log(freq / loc_filterFrequency, 2);
 					attenuation = 6 * attenuation;
-					temp_buffer[i] = temp_buffer[i] * Math.Pow(2, -Math.Abs(attenuation) / 10);
+					_fftBuffer[i] = _fftBuffer[i] * Math.Pow(2, -Math.Abs(attenuation) / 10);
 				}
 				
 			}
 
 			// now transform back into time space and reassemble the attenuated frequency components
-			fft.ComputeReverse(temp_buffer);
+			_fft.ComputeReverse(_fftBuffer);
 
 			int temp = nsamp - 1;
 			//re-sample back down to the original number of samples
 			for (double i = 0; i < nsamp; i++)
 			{
-				_outputBuffer_filtered[(int)i + filter_index] = (int)(temp_buffer[(int)Math.Ceiling((i / (nsamp - 1) * (nsamp_2 - 1)))]/(nsamp_2/2));
+				_outputBufferFiltered[(int)i + _filterIndex] = (int)(_fftBuffer[(int)Math.Ceiling((i / (nsamp - 1) * (nsamp_2 - 1)))] * _fft.CorrectionScaleFactor);
 
-				if (_outputBuffer_filtered[(int)i + filter_index] < 0)
+				if (_outputBufferFiltered[(int)i + _filterIndex] < 0)
 				{
-					_outputBuffer_filtered[(int)i + filter_index] = 0;
+					_outputBufferFiltered[(int)i + _filterIndex] = 0;
 				}
 
 				// the FFT is only an approximate model and fails at low sample rates
@@ -321,19 +336,19 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				// thus smoothing out the FT samples
 				
 				if (i<16)
-					_outputBuffer_filtered[(int)i + filter_index] = (int)((last_filtered_value * Math.Pow(15 - i,1) + _outputBuffer_filtered[(int)i + filter_index] * Math.Pow(i,1))/ Math.Pow(15,1));
+					_outputBufferFiltered[(int)i + _filterIndex] = (int)((_lastFilteredValue * Math.Pow(15 - i,1) + _outputBufferFiltered[(int)i + _filterIndex] * Math.Pow(i,1))/ Math.Pow(15,1));
 			}
 		}
 		// ----------------------------------
 
 		public void SyncState(Serializer ser)
 		{
-			ser.Sync("_databus", ref _databus);
-			ser.Sync("_cachedCycles", ref _cachedCycles);
-			ser.Sync("_disableVoice3", ref _disableVoice3);
-			ser.Sync("_envelopeOutput0", ref _envelopeOutput0);
-			ser.Sync("_envelopeOutput1", ref _envelopeOutput1);
-			ser.Sync("_envelopeOutput2", ref _envelopeOutput2);
+			ser.Sync(nameof(_databus), ref _databus);
+			ser.Sync(nameof(_cachedCycles), ref _cachedCycles);
+			ser.Sync(nameof(_disableVoice3), ref _disableVoice3);
+			ser.Sync(nameof(_envelopeOutput0), ref _envelopeOutput0);
+			ser.Sync(nameof(_envelopeOutput1), ref _envelopeOutput1);
+			ser.Sync(nameof(_envelopeOutput2), ref _envelopeOutput2);
 
 			for (int i = 0; i < _envelopes.Length; i++)
 			{
@@ -342,20 +357,20 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				ser.EndSection();
 			}
 
-			ser.Sync("_filterEnable", ref _filterEnable, useNull: false);
-			ser.Sync("_filterFrequency", ref _filterFrequency);
-			ser.Sync("_filterResonance", ref _filterResonance);
-			ser.Sync("_filterSelectBandPass", ref _filterSelectBandPass);
-			ser.Sync("_filterSelectLoPass", ref _filterSelectLoPass);
-			ser.Sync("_filterSelectHiPass", ref _filterSelectHiPass);
-			ser.Sync("_mixer", ref _mixer);
-			ser.Sync("_potCounter", ref _potCounter);
-			ser.Sync("_potX", ref _potX);
-			ser.Sync("_potY", ref _potY);
-			ser.Sync("_sample", ref _sample);
-			ser.Sync("_voiceOutput0", ref _voiceOutput0);
-			ser.Sync("_voiceOutput1", ref _voiceOutput1);
-			ser.Sync("_voiceOutput2", ref _voiceOutput2);
+			ser.Sync(nameof(_filterEnable), ref _filterEnable, useNull: false);
+			ser.Sync(nameof(_filterFrequency), ref _filterFrequency);
+			ser.Sync(nameof(_filterResonance), ref _filterResonance);
+			ser.Sync(nameof(_filterSelectBandPass), ref _filterSelectBandPass);
+			ser.Sync(nameof(_filterSelectLoPass), ref _filterSelectLoPass);
+			ser.Sync(nameof(_filterSelectHiPass), ref _filterSelectHiPass);
+			ser.Sync(nameof(_mixer), ref _mixer);
+			ser.Sync(nameof(_potCounter), ref _potCounter);
+			ser.Sync(nameof(_potX), ref _potX);
+			ser.Sync(nameof(_potY), ref _potY);
+			ser.Sync(nameof(_sample), ref _sample);
+			ser.Sync(nameof(_voiceOutput0), ref _voiceOutput0);
+			ser.Sync(nameof(_voiceOutput1), ref _voiceOutput1);
+			ser.Sync(nameof(_voiceOutput2), ref _voiceOutput2);
 
 			for (int i = 0; i < _voices.Length; i++)
 			{
@@ -364,7 +379,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64.MOS
 				ser.EndSection();
 			}
 
-			ser.Sync("_volume", ref _volume);
+			ser.Sync(nameof(_volume), ref _volume);
 		}
 	}
 }

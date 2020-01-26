@@ -35,7 +35,7 @@ namespace BizHawk.Client.Common
 					return "Recording None";
 				}
 
-				return "Recording Player " + CurrentPlayer;
+				return $"Recording Player {CurrentPlayer}";
 			}
 		}
 
@@ -154,8 +154,7 @@ namespace BizHawk.Client.Common
 				return null;
 			}
 
-			int player;
-			if (!int.TryParse(parts[0].Substring(1), out player))
+			if (!int.TryParse(parts[0].Substring(1), out var player))
 			{
 				return null;
 			}

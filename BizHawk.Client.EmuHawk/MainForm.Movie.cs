@@ -5,63 +5,52 @@ using System.Windows.Forms;
 using BizHawk.Client.Common;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
-using BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES;
-using BizHawk.Emulation.Cores.Nintendo.NES;
-using BizHawk.Emulation.Cores.Nintendo.SNES9X;
-using BizHawk.Emulation.Cores.Nintendo.SNES;
 
 namespace BizHawk.Client.EmuHawk
 {
 	partial class MainForm
 	{
-		public void StartNewMovie(string path, bool record)
-		{
-			StartNewMovie(MovieService.Get(Global.Config.RecentMovies.MostRecent), false);
-		}
-
 		public bool StartNewMovie(IMovie movie, bool record)
 		{
 			// SuuperW: Check changes. adelikat: this could break bk2 movies
 			// TODO: Clean up the saving process
-			if (movie.IsActive && (movie.Changes || !(movie is TasMovie)))
+			if (movie.IsActive() && (movie.Changes || !(movie is TasMovie)))
 			{
 				movie.Save();
 			}
 
 			try
 			{
-				var tasmovie = (movie as TasMovie);
-				if (tasmovie != null)
-					tasmovie.TasStateManager.MountWriteAccess();
-				Global.MovieSession.QueueNewMovie(movie, record, Emulator);
+				MovieSession.QueueNewMovie(movie, record, Emulator);
 			}
 			catch (MoviePlatformMismatchException ex)
 			{
-				MessageBox.Show(new Form(){TopMost = true}, ex.Message, "Movie/Platform Mismatch", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				using var ownerForm = new Form { TopMost = true };
+				MessageBox.Show(ownerForm, ex.Message, "Movie/Platform Mismatch", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				return false;
 			}
 
 			RebootCore();
 
-			if (Global.MovieSession.PreviousNES_InQuickNES.HasValue)
+			if (MovieSession.PreviousNES_InQuickNES.HasValue)
 			{
-				Global.Config.NES_InQuickNES = Global.MovieSession.PreviousNES_InQuickNES.Value;
-				Global.MovieSession.PreviousNES_InQuickNES = null;
+				Config.NesInQuickNes = MovieSession.PreviousNES_InQuickNES.Value;
+				MovieSession.PreviousNES_InQuickNES = null;
 			}
 
-			if (Global.MovieSession.PreviousSNES_InSnes9x.HasValue)
+			if (MovieSession.PreviousSNES_InSnes9x.HasValue)
 			{
-				Global.Config.SNES_InSnes9x = Global.MovieSession.PreviousSNES_InSnes9x.Value;
-				Global.MovieSession.PreviousSNES_InSnes9x = null;
+				Config.SnesInSnes9x = MovieSession.PreviousSNES_InSnes9x.Value;
+				MovieSession.PreviousSNES_InSnes9x = null;
 			}
 
-			if (Global.MovieSession.PreviousGBA_UsemGBA.HasValue)
+			if (MovieSession.PreviousGBA_UsemGBA.HasValue)
 			{
-				Global.Config.GBA_UsemGBA = Global.MovieSession.PreviousGBA_UsemGBA.Value;
-				Global.MovieSession.PreviousGBA_UsemGBA = null;
+				Config.GbaUsemGba = MovieSession.PreviousGBA_UsemGBA.Value;
+				MovieSession.PreviousGBA_UsemGBA = null;
 			}
 
-			Global.Config.RecentMovies.Add(movie.Filename);
+			Config.RecentMovies.Add(movie.Filename);
 
 			if (Emulator.HasSavestates() && movie.StartsFromSavestate)
 			{
@@ -92,36 +81,36 @@ namespace BizHawk.Client.EmuHawk
 				Emulator.AsSaveRam().StoreSaveRam(movie.SaveRam);
 			}
 
-			Global.MovieSession.RunQueuedMovie(record);
+			MovieSession.RunQueuedMovie(record);
 
 			SetMainformMovieInfo();
 
-			GlobalWin.Tools.Restart<VirtualpadTool>();
+			Tools.Restart<VirtualpadTool>();
 
 
-			if (Global.MovieSession.Movie.Hash != Global.Game.Hash)
+			if (MovieSession.Movie.Hash != Game.Hash)
 			{
-				GlobalWin.OSD.AddMessage("Warning: Movie hash does not match the ROM");
+				AddOnScreenMessage("Warning: Movie hash does not match the ROM");
 			}
 
-			return true;
+			return !(Emulator is NullEmulator);
 		}
 
 		public void SetMainformMovieInfo()
 		{
-			if (Global.MovieSession.Movie.IsPlaying)
+			if (MovieSession.Movie.IsPlaying())
 			{
 				PlayRecordStatusButton.Image = Properties.Resources.Play;
 				PlayRecordStatusButton.ToolTipText = "Movie is in playback mode";
 				PlayRecordStatusButton.Visible = true;
 			}
-			else if (Global.MovieSession.Movie.IsRecording)
+			else if (MovieSession.Movie.IsRecording())
 			{
 				PlayRecordStatusButton.Image = Properties.Resources.RecordHS;
 				PlayRecordStatusButton.ToolTipText = "Movie is in record mode";
 				PlayRecordStatusButton.Visible = true;
 			}
-			else if (!Global.MovieSession.Movie.IsActive)
+			else if (!MovieSession.Movie.IsActive())
 			{
 				PlayRecordStatusButton.Image = Properties.Resources.Blank;
 				PlayRecordStatusButton.ToolTipText = "No movie is active";
@@ -140,10 +129,10 @@ namespace BizHawk.Client.EmuHawk
 			}
 			else
 			{
-				if (Global.MovieSession.Movie.IsActive)
+				if (MovieSession.Movie.IsActive())
 				{
-					StartNewMovie(Global.MovieSession.Movie, false);
-					GlobalWin.OSD.AddMessage("Replaying movie file in read-only mode");
+					StartNewMovie(MovieSession.Movie, false);
+					AddOnScreenMessage("Replaying movie file in read-only mode");
 				}
 			}
 		}

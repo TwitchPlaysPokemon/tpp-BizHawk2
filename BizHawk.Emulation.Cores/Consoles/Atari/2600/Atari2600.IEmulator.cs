@@ -1,4 +1,5 @@
 ﻿using BizHawk.Emulation.Common;
+using System;
 
 namespace BizHawk.Emulation.Cores.Atari.Atari2600
 {
@@ -8,7 +9,7 @@ namespace BizHawk.Emulation.Cores.Atari.Atari2600
 
 		public ControllerDefinition ControllerDefinition => _controllerDeck.Definition;
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound)
+		public bool FrameAdvance(IController controller, bool render, bool renderSound)
 		{
 			_controller = controller;
 
@@ -41,24 +42,41 @@ namespace BizHawk.Emulation.Cores.Atari.Atari2600
 				_rightDifficultySwitchHeld = false;
 			}
 
+			unselect_reset = false;
+
+			int count = 0;
 			while (!_tia.New_Frame)
 			{
 				Cycle();
+				count++;
+				if (count > 1000000 && !SP_FRAME)
+				{
+					if (SP_RESET)
+					{
+						unselect_reset = true;
+					}
+					else
+					{
+						throw new Exception("ERROR: Unable to resolve Frame. Please Report.");
+					}
+				}
 			}
 
 			_tia.New_Frame = false;
 
-			if (rendersound == false)
+			if (renderSound == false)
 			{
 				_tia.AudioClocks = 0; // we need this here since the async sound provider won't check in this case
 			}
 
 			if (_islag)
 			{
-				_lagcount++;
+				_lagCount++;
 			}
 
 			_tia.LineCount = 0;
+
+			return true;
 		}
 
 		public int Frame => _frame;
@@ -72,7 +90,7 @@ namespace BizHawk.Emulation.Cores.Atari.Atari2600
 		public void ResetCounters()
 		{
 			_frame = 0;
-			_lagcount = 0;
+			_lagCount = 0;
 			_islag = false;
 		}
 

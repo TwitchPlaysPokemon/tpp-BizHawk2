@@ -6,10 +6,11 @@ using System;
 using System.Diagnostics;
 using System.Collections;
 using System.Collections.Generic;
-using sd = System.Drawing;
 
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
+
+using sd = System.Drawing;
 
 namespace BizHawk.Bizware.BizwareGL
 {
@@ -63,7 +64,7 @@ namespace BizHawk.Bizware.BizwareGL
 			CornerColors[which] = color;
 		}
 
-
+		/// <exception cref="ArgumentException"><paramref name="colors"/> does not have exactly <c>4</c> elements</exception>
 		public void SetCornerColors(OpenTK.Graphics.Color4[] colors)
 		{
 			Flush(); //dont really need to flush with current implementation. we might as well roll modulate color into it too.
@@ -77,6 +78,7 @@ namespace BizHawk.Bizware.BizwareGL
 			DefaultPipeline.Dispose();
 		}
 
+		/// <exception cref="InvalidOperationException"><see cref="IsActive"/> is <see langword="true"/></exception>
 		public void SetPipeline(Pipeline pipeline)
 		{
 			if (IsActive)
@@ -118,7 +120,7 @@ namespace BizHawk.Bizware.BizwareGL
 		MatrixStack _Projection, _Modelview;
 		public MatrixStack Projection
 		{
-			get { return _Projection; }
+			get => _Projection;
 			set
 			{
 				_Projection = value;
@@ -127,7 +129,7 @@ namespace BizHawk.Bizware.BizwareGL
 		}
 		public MatrixStack Modelview
 		{
-			get { return _Modelview; }
+			get => _Modelview;
 			set
 			{
 				_Modelview = value;
@@ -147,7 +149,7 @@ namespace BizHawk.Bizware.BizwareGL
 			Owner.SetViewport(width, height);
 		}
 
-
+		/// <exception cref="InvalidOperationException">no pipeline set (need to call <see cref="SetPipeline"/>)</exception>
 		public void Begin()
 		{
 			//uhhmmm I want to throw an exception if its already active, but its annoying.
@@ -176,11 +178,11 @@ namespace BizHawk.Bizware.BizwareGL
 			//no batching, nothing to do here yet
 		}
 
-
+		/// <exception cref="InvalidOperationException"><see cref="IsActive"/> is <see langword="false"/></exception>
 		public void End()
 		{
 			if (!IsActive)
-				throw new InvalidOperationException("GuiRenderer is not active!");
+				throw new InvalidOperationException($"{nameof(GuiRenderer)} is not active!");
 			IsActive = false;
 		}
 
@@ -224,7 +226,7 @@ namespace BizHawk.Bizware.BizwareGL
 
 		unsafe void DrawInternal(Texture2d tex, float x, float y, float w, float h)
 		{
-			Art art = new Art(null);
+			Art art = new Art((ArtManager)null);
 			art.Width = w;
 			art.Height = h;
 			art.u0 = art.v0 = 0;

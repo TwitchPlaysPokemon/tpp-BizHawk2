@@ -110,18 +110,17 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 							One5();
 							on = One4();
 							break;
-
 						case 0x01:
 							// Both run, but the 5 bit is ignored
 							on = Run4();
-							//Run5();
+							Run5();
 							break;
 						case 0x02:
 							if ((sr5 & 0x0f) == 0 || (sr5 & 0x0f) == 0x0f)
 							{
 								on = Run4();
+								Run5();
 							}
-
 							Run5();
 							break;
 						case 0x03:
@@ -129,21 +128,17 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 							{
 								on = Run4();
 							}
-
 							break;
-
 						case 0x04:
 							Run5();
 							One4();
 							on = Run1();
 							break;
-
 						case 0x05:
 							One5();
 							Run4();
 							on = Run1();
-							break;
-							
+							break;							
 						case 0x06:
 						case 0x0a:
 							Run5();
@@ -155,14 +150,11 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 							{
 								on = true;
 							}
-
 							break;
-
 						case 0x07:
 						case 0x09:
 							on = Run5();
-							break;
-							
+							break;							
 						case 0x08:
 							on = Run9();
 							break;
@@ -172,21 +164,22 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 							{
 								on = Run1();
 							}
-
 							break;
 						case 0x0e:
 							if (Run3())
 							{
 								goto case 0x06;
 							}
-
 							break;
 						case 0x0f:
-							if (Run3())
+							// poly5 output to div 6
+							if (Run5())
 							{
-								goto case 0x07;
+								if (Run3())
+								{
+									on = Run1();
+								}
 							}
-
 							break;
 					}
 				}
@@ -196,16 +189,16 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 
 			public void SyncState(Serializer ser)
 			{
-				ser.Sync("AUDC", ref AUDC);
-				ser.Sync("AUDF", ref AUDF);
-				ser.Sync("AUDV", ref AUDV);
-				ser.Sync("sr1", ref sr1);
-				ser.Sync("sr3", ref sr3);
-				ser.Sync("sr4", ref sr4);
-				ser.Sync("sr5", ref sr5);
-				ser.Sync("sr9", ref sr9);
-				ser.Sync("freqcnt", ref freqcnt);
-				ser.Sync("on", ref on);
+				ser.Sync(nameof(AUDC), ref AUDC);
+				ser.Sync(nameof(AUDF), ref AUDF);
+				ser.Sync(nameof(AUDV), ref AUDV);
+				ser.Sync(nameof(sr1), ref sr1);
+				ser.Sync(nameof(sr3), ref sr3);
+				ser.Sync(nameof(sr4), ref sr4);
+				ser.Sync(nameof(sr5), ref sr5);
+				ser.Sync(nameof(sr9), ref sr9);
+				ser.Sync(nameof(freqcnt), ref freqcnt);
+				ser.Sync(nameof(on), ref on);
 			}
 		}
 	}

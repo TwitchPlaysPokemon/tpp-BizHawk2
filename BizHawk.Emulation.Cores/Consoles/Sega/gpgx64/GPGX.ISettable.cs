@@ -40,38 +40,22 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 		{
 			public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
 			{
-				if (sourceType == typeof(string))
-				{
-					return true;
-				}
-				else
-				{
-					return base.CanConvertFrom(context, sourceType);
-				}
+				return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
 			}
 
 			public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
 			{
-				if (destinationType == typeof(string))
-				{
-					return true;
-				}
-				else
-				{
-					return base.CanConvertTo(context, destinationType);
-				}
+				return destinationType == typeof(string) || base.CanConvertTo(context, destinationType);
 			}
 
 			public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
 			{
 				if (destinationType == typeof(string) && value.GetType() == typeof(uint))
 				{
-					return string.Format("0x{0:x8}", value);
+					return $"0x{value:x8}";
 				}
-				else
-				{
-					return base.ConvertTo(context, culture, value, destinationType);
-				}
+
+				return base.ConvertTo(context, culture, value, destinationType);
 			}
 
 			public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
@@ -85,10 +69,8 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 					}
 					return uint.Parse(input, NumberStyles.HexNumber, culture);
 				}
-				else
-				{
-					return base.ConvertFrom(context, culture, value);
-				}
+
+				return base.ConvertFrom(context, culture, value);
 			}
 		}
 
@@ -96,38 +78,22 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 		{
 			public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
 			{
-				if (sourceType == typeof(string))
-				{
-					return true;
-				}
-				else
-				{
-					return base.CanConvertFrom(context, sourceType);
-				}
+				return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
 			}
 
 			public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
 			{
-				if (destinationType == typeof(string))
-				{
-					return true;
-				}
-				else
-				{
-					return base.CanConvertTo(context, destinationType);
-				}
+				return destinationType == typeof(string) || base.CanConvertTo(context, destinationType);
 			}
 
 			public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
 			{
 				if (destinationType == typeof(string) && value.GetType() == typeof(ushort))
 				{
-					return string.Format("0x{0:x4}", value);
+					return $"0x{value:x4}";
 				}
-				else
-				{
-					return base.ConvertTo(context, culture, value, destinationType);
-				}
+
+				return base.ConvertTo(context, culture, value, destinationType);
 			}
 
 			public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
@@ -141,10 +107,8 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 					}
 					return ushort.Parse(input, NumberStyles.HexNumber, culture);
 				}
-				else
-				{
-					return base.ConvertFrom(context, culture, value);
-				}
+
+				return base.ConvertFrom(context, culture, value);
 			}
 		}
 
@@ -160,7 +124,11 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			[DisplayName("Background Layer A")]
 			[Description("True to draw BG layer A")]
 			[DefaultValue(true)]
-			public bool DrawBGA { get { return _DrawBGA; } set { _DrawBGA = value; } }
+			public bool DrawBGA
+			{
+				get => _DrawBGA;
+				set => _DrawBGA = value;
+			}
 
 			[DeepEqualsIgnore]
 			[JsonIgnore]
@@ -169,7 +137,11 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			[DisplayName("Background Layer B")]
 			[Description("True to draw BG layer B")]
 			[DefaultValue(true)]
-			public bool DrawBGB { get { return _DrawBGB; } set { _DrawBGB = value; } }
+			public bool DrawBGB
+			{
+				get => _DrawBGB;
+				set => _DrawBGB = value;
+			}
 
 			[DeepEqualsIgnore]
 			[JsonIgnore]
@@ -178,7 +150,11 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			[DisplayName("Background Layer W")]
 			[Description("True to draw BG layer W")]
 			[DefaultValue(true)]
-			public bool DrawBGW { get { return _DrawBGW; } set { _DrawBGW = value; } }
+			public bool DrawBGW
+			{
+				get => _DrawBGW;
+				set => _DrawBGW = value;
+			}
 
 			[DeepEqualsIgnore]
 			[JsonIgnore]
@@ -187,7 +163,11 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			[DisplayName("Sprite Layer")]
 			[Description("True to draw sprite layer")]
 			[DefaultValue(true)]
-			public bool DrawObj { get { return _DrawObj; } set { _DrawObj = value; } }
+			public bool DrawObj
+			{
+				get => _DrawObj;
+				set => _DrawObj = value;
+			}
 
 			[DeepEqualsIgnore]
 			[JsonIgnore]
@@ -196,7 +176,72 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			[DisplayName("Pad screen to 320")]
 			[Description("When using 1:1 aspect ratio, enable to make screen width constant (320) between game modes")]
 			[DefaultValue(false)]
-			public bool PadScreen320 { get { return _PadScreen320; } set { _PadScreen320 = value; } }
+			public bool PadScreen320
+			{
+				get => _PadScreen320;
+				set => _PadScreen320 = value;
+			}
+
+
+			[DeepEqualsIgnore]
+			[JsonIgnore]
+			private bool _Backdrop;
+
+			[DisplayName("Use custom backdrop color")]
+			[Description("Filler when layers are off")]
+			[DefaultValue((bool)false)]
+			public bool Backdrop
+			{
+				get => _Backdrop;
+				set => _Backdrop = value;
+			}
+
+
+			public GPGXSettings()
+			{
+				SettingsUtil.SetDefaultValues(this);
+			}
+
+			public GPGXSettings Clone()
+			{
+				return (GPGXSettings)MemberwiseClone();
+			}
+
+			public LibGPGX.DrawMask GetDrawMask()
+			{
+				LibGPGX.DrawMask ret = 0;
+				if (DrawBGA) ret |= LibGPGX.DrawMask.BGA;
+				if (DrawBGB) ret |= LibGPGX.DrawMask.BGB;
+				if (DrawBGW) ret |= LibGPGX.DrawMask.BGW;
+				if (DrawObj) ret |= LibGPGX.DrawMask.Obj;
+				if (Backdrop) ret |= LibGPGX.DrawMask.Backdrop;
+				return ret;
+			}
+
+			public static bool NeedsReboot(GPGXSettings x, GPGXSettings y)
+			{
+				return !DeepEquality.DeepEquals(x, y);
+			}
+
+			
+		}
+
+		public class GPGXSyncSettings
+		{
+			[DisplayName("Use Six Button Controllers")]
+			[Description("Controls the type of any attached normal controllers; six button controllers are used if true, otherwise three button controllers.  Some games don't work correctly with six button controllers.  Not relevant if other controller types are connected.")]
+			[DefaultValue(true)]
+			public bool UseSixButton { get; set; }
+
+			[DisplayName("Control Type")]
+			[Description("Sets the type of controls that are plugged into the console.  Some games will automatically load with a different control type.")]
+			[DefaultValue(ControlType.Normal)]
+			public ControlType ControlType { get; set; }
+
+			[DisplayName("Autodetect Region")]
+			[Description("Sets the region of the emulated console.  Many games can run on multiple regions and will behave differently on different ones.  Some games may require a particular region.")]
+			[DefaultValue(LibGPGX.Region.Autodetect)]
+			public LibGPGX.Region Region { get; set; }
 
 			[DisplayName("Audio Filter")]
 			[DefaultValue(LibGPGX.InitSettings.FilterType.LowPass)]
@@ -233,45 +278,10 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 			[DefaultValue((short)1)]
 			public short HighGain { get; set; }
 
-			[DeepEqualsIgnore]
-			[JsonIgnore]
-			private bool _Backdrop;
-
-			[DisplayName("Use custom backdrop color")]
-			[Description("Filler when layers are off")]
-			[DefaultValue((bool)false)]
-			public bool Backdrop { get { return _Backdrop; } set { _Backdrop = value; } }
-
 			[Description("Magic pink by default. Requires core reboot")]
 			[TypeConverter(typeof(UintToHexConverter))]
 			[DefaultValue((uint)0xffff00ff)]
 			public uint BackdropColor { get; set; }
-
-			public GPGXSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
-
-			public GPGXSettings Clone()
-			{
-				return (GPGXSettings)MemberwiseClone();
-			}
-
-			public LibGPGX.DrawMask GetDrawMask()
-			{
-				LibGPGX.DrawMask ret = 0;
-				if (DrawBGA) ret |= LibGPGX.DrawMask.BGA;
-				if (DrawBGB) ret |= LibGPGX.DrawMask.BGB;
-				if (DrawBGW) ret |= LibGPGX.DrawMask.BGW;
-				if (DrawObj) ret |= LibGPGX.DrawMask.Obj;
-				if (Backdrop) ret |= LibGPGX.DrawMask.Backdrop;
-				return ret;
-			}
-
-			public static bool NeedsReboot(GPGXSettings x, GPGXSettings y)
-			{
-				return !DeepEquality.DeepEquals(x, y);
-			}
 
 			public LibGPGX.InitSettings GetNativeSettings()
 			{
@@ -287,24 +297,6 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 					BackdropColor = BackdropColor
 				};
 			}
-		}
-
-		public class GPGXSyncSettings
-		{
-			[DisplayName("Use Six Button Controllers")]
-			[Description("Controls the type of any attached normal controllers; six button controllers are used if true, otherwise three button controllers.  Some games don't work correctly with six button controllers.  Not relevant if other controller types are connected.")]
-			[DefaultValue(true)]
-			public bool UseSixButton { get; set; }
-
-			[DisplayName("Control Type")]
-			[Description("Sets the type of controls that are plugged into the console.  Some games will automatically load with a different control type.")]
-			[DefaultValue(ControlType.Normal)]
-			public ControlType ControlType { get; set; }
-
-			[DisplayName("Autodetect Region")]
-			[Description("Sets the region of the emulated console.  Many games can run on multiple regions and will behave differently on different ones.  Some games may require a particular region.")]
-			[DefaultValue(LibGPGX.Region.Autodetect)]
-			public LibGPGX.Region Region { get; set; }
 
 			public GPGXSyncSettings()
 			{

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-
-using BizHawk.Common.NumberExtensions;
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Emulation.Cores.ColecoVision
@@ -142,6 +140,6 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 			throw new NotImplementedException();
 		}
 
-		public int TotalExecutedCycles => _cpu.TotalExecutedCycles;
+		public long TotalExecutedCycles => _cpu.TotalExecutedCycles;
 	}
 }

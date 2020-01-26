@@ -4,18 +4,15 @@ using System.Windows.Forms;
 using BizHawk.Client.Common;
 
 // We pretend it's a tooltip kind of thing, so show only the actual contents
-// and avoid stealing forcus, while still being topmost
+// and avoid stealing focus, while still being topmost
 // http://stackoverflow.com/a/25219399/2792852
-// This is not an actual tooltip, because they can't reliably fade in and out with trasparency
+// This is not an actual tooltip, because they can't reliably fade in and out with transparency
 namespace BizHawk.Client.EmuHawk
 {
 	public partial class ScreenshotForm : Form
 	{
-		// but still appear topmost
 		private const int WS_EX_TOPMOST = 0x00000008;
-
-		private const int WidthCap = 320;
-		private const int HeightCap = 240;
+		
 		private const int Interval = 40;
 		private const double AlphaStep = 0.125;
 
@@ -25,16 +22,14 @@ namespace BizHawk.Client.EmuHawk
 		private TasBranch _branch;
 		private int _drawingHeight;
 
-		new public Font Font;
-		new public int Padding;
-		new public string Text;
+		public new Font Font;
+		public new int Padding;
+		public new string Text;
 
 		public ScreenshotForm()
 		{
 			InitializeComponent();
-
-			Width = WidthCap;
-			Height = HeightCap;
+			
 			var fontSize = 10;
 			var fontStyle = FontStyle.Regular;
 			Font = new Font(FontFamily.GenericMonospace, fontSize, fontStyle);
@@ -70,15 +65,6 @@ namespace BizHawk.Client.EmuHawk
 			_drawingHeight = height;
 			Text = _branch.UserText;
 			Location = location;
-
-			// Set the screenshot to "1x" resolution of the core
-			// cores like n64 and psx are going to still have sizes too big for the control, so cap them
-			if (Width > WidthCap)
-			{
-				double ratio = WidthCap / (double)Width;
-				Width = WidthCap;
-				_drawingHeight = (int)((double)(_drawingHeight) * ratio);
-			}
 
 			if (Padding > 0)
 			{

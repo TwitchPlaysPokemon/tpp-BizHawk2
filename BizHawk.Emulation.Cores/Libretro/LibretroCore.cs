@@ -150,15 +150,17 @@ namespace BizHawk.Emulation.Cores.Libretro
 		[FeatureNotImplemented]
 		public void SetCpuRegister(string register, int value) { throw new NotImplementedException(); }
 		[FeatureNotImplemented]
-		public int TotalExecutedCycles { get { throw new NotImplementedException(); } }
+		public long TotalExecutedCycles { get { throw new NotImplementedException(); } }
 
 		private IController _controller;
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound)
+		public bool FrameAdvance(IController controller, bool render, bool rendersound)
 		{
 			_controller = controller;
 			api.CMD_Run();
 			timeFrameCounter++;
+
+			return true;
 		}
 
 		GCHandle vidBufferHandle;
@@ -230,7 +232,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 
 			// todo: more precise?
 			uint spsnum = (uint)sps * 1000;
-			uint spsden = (uint)1000;
+			uint spsden = 1000U;
 
 			resampler = new SpeexResampler(SpeexResampler.Quality.QUALITY_DESKTOP, 44100 * spsden, spsnum, (uint)sps, 44100, null, null);
 		}
@@ -295,7 +297,11 @@ namespace BizHawk.Emulation.Cores.Libretro
 		public ControllerDefinition ControllerDefinition { get; private set; }
 
 		int timeFrameCounter;
-		public int Frame { get { return timeFrameCounter; } set { timeFrameCounter = value; } }
+		public int Frame
+		{
+			get => timeFrameCounter;
+			set => timeFrameCounter = value;
+		}
 		public int LagCount { get; set; }
 		public bool IsLagFrame { get; set; }
 		public string SystemId { get { return "Libretro"; } }
@@ -342,7 +348,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 			}
 
 			[FeatureNotImplemented]
-			set { throw new NotImplementedException(); }
+			set => throw new NotImplementedException();
 		}
 
 		#endregion
@@ -361,7 +367,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 		public void SaveStateText(System.IO.TextWriter writer)
 		{
 			var temp = SaveStateBinary();
-			temp.SaveAsHex(writer);
+			temp.SaveAsHexFast(writer);
 		}
 
 		public void LoadStateText(System.IO.TextReader reader)

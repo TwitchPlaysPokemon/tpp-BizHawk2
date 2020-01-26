@@ -8,7 +8,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 
 		public ControllerDefinition ControllerDefinition => C64ControllerDefinition;
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound)
+		public bool FrameAdvance(IController controller, bool render, bool renderSound)
 		{
 			_board.Controller = controller;
 
@@ -19,6 +19,32 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			else
 			{
 				_board.Cpu.TraceCallback = null;
+			}
+
+			if (controller.IsPressed("Power"))
+			{
+				if (!_powerPressed)
+				{
+					_powerPressed = true;
+					HardReset();
+				}
+			}
+			else
+			{
+				_powerPressed = false;
+			}
+
+			if (controller.IsPressed("Reset"))
+			{
+				if (!_resetPressed)
+				{
+					_resetPressed = true;
+					SoftReset();
+				}
+			}
+			else
+			{
+				_resetPressed = false;
 			}
 
 			if (controller.IsPressed("Next Disk") && !_nextPressed)
@@ -47,6 +73,8 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 				DoCycle();
 			}
 			while (_frameCycles != 0);
+
+			return true;
 		}
 
 		public int Frame => _frame;

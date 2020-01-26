@@ -5,6 +5,7 @@ using System.Windows.Forms;
 
 using BizHawk.Emulation.Common;
 using BizHawk.Client.Common;
+using BizHawk.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
@@ -19,34 +20,31 @@ namespace BizHawk.Client.EmuHawk
 
 		private readonly Dictionary<char, int> _gameGenieTable = new Dictionary<char, int>
 		{
-			{ 'A', 0 },  // 0000
-			{ 'P', 1 },  // 0001
-			{ 'Z', 2 },  // 0010
-			{ 'L', 3 },  // 0011
-			{ 'G', 4 },  // 0100
-			{ 'I', 5 },  // 0101
-			{ 'T', 6 },  // 0110
-			{ 'Y', 7 },  // 0111
-			{ 'E', 8 },  // 1000
-			{ 'O', 9 },  // 1001
-			{ 'X', 10 }, // 1010
-			{ 'U', 11 }, // 1011
-			{ 'K', 12 }, // 1100
-			{ 'S', 13 }, // 1101
-			{ 'V', 14 }, // 1110
-			{ 'N', 15 }, // 1111
+			['A'] = 0,  // 0000
+			['P'] = 1,  // 0001
+			['Z'] = 2,  // 0010
+			['L'] = 3,  // 0011
+			['G'] = 4,  // 0100
+			['I'] = 5,  // 0101
+			['T'] = 6,  // 0110
+			['Y'] = 7,  // 0111
+			['E'] = 8,  // 1000
+			['O'] = 9,  // 1001
+			['X'] = 10, // 1010
+			['U'] = 11, // 1011
+			['K'] = 12, // 1100
+			['S'] = 13, // 1101
+			['V'] = 14, // 1110
+			['N'] = 15  // 1111
 		};
 
 		private int? _address;
 		private int? _value;
 		private int? _compare;
 
-		public int? Address { get { return _address; } }
-		public int? Value { get { return _value; } }
-		public int? Compare { get { return _compare; } }
+		public bool AskSaveChanges() => true;
+		public bool UpdateBefore => false;
 
-		public bool AskSaveChanges() { return true; }
-		public bool UpdateBefore { get { return false; } }
 		public void Restart()
 		{
 			if (Emulator.SystemId != "NES")
@@ -214,13 +212,10 @@ namespace BizHawk.Client.EmuHawk
 			if (Encoding.Checked && !string.IsNullOrWhiteSpace(ValueBox.Text))
 			{
 				var val = int.Parse(ValueBox.Text, NumberStyles.HexNumber);
-				if (val > 0 && val < 0x100)
+				if (val.StrictlyBoundedBy(0.RangeTo(0x100)) && !string.IsNullOrWhiteSpace(AddressBox.Text))
 				{
-					if (!string.IsNullOrWhiteSpace(AddressBox.Text))
-					{
-						_value = val;
-						EncodeGameGenie();
-					}
+					_value = val;
+					EncodeGameGenie();
 				}
 			}
 
@@ -276,13 +271,10 @@ namespace BizHawk.Client.EmuHawk
 				if (CompareBox.Text.Length > 0)
 				{
 					var c = int.Parse(CompareBox.Text, NumberStyles.HexNumber);
-					if (c > 0 && c < 0x100)
+					if (c.StrictlyBoundedBy(0.RangeTo(0x100)) && ValueBox.Text.Length > 0 && AddressBox.Text.Length > 0)
 					{
-						if (ValueBox.Text.Length > 0 && AddressBox.Text.Length > 0)
-						{
-							_compare = c;
-							EncodeGameGenie();
-						}
+						_compare = c;
+						EncodeGameGenie();
 					}
 				}
 				else

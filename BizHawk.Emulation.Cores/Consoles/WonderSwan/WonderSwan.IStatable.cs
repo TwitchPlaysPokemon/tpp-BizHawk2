@@ -10,13 +10,13 @@ namespace BizHawk.Emulation.Cores.WonderSwan
 {
 	partial class WonderSwan: IStatable
 	{
-		void InitIStatable()
+		private void InitIStatable()
 		{
 			savebuff = new byte[BizSwan.bizswan_binstatesize(Core)];
 			savebuff2 = new byte[savebuff.Length + 13];
 		}
 
-		JsonSerializer ser = new JsonSerializer() { Formatting = Formatting.Indented };
+		JsonSerializer ser = new JsonSerializer { Formatting = Formatting.Indented };
 
 		[StructLayout(LayoutKind.Sequential)]
 		class TextStateData
@@ -64,7 +64,7 @@ namespace BizHawk.Emulation.Cores.WonderSwan
 		public void SaveStateBinary(BinaryWriter writer)
 		{
 			if (!BizSwan.bizswan_binstatesave(Core, savebuff, savebuff.Length))
-				throw new InvalidOperationException("bizswan_binstatesave() returned false!");
+				throw new InvalidOperationException($"{nameof(BizSwan.bizswan_binstatesave)}() returned false!");
 			writer.Write(savebuff.Length);
 			writer.Write(savebuff);
 
@@ -80,7 +80,7 @@ namespace BizHawk.Emulation.Cores.WonderSwan
 				throw new InvalidOperationException("Save buffer size mismatch!");
 			reader.Read(savebuff, 0, length);
 			if (!BizSwan.bizswan_binstateload(Core, savebuff, savebuff.Length))
-				throw new InvalidOperationException("bizswan_binstateload() returned false!");
+				throw new InvalidOperationException($"{nameof(BizSwan.bizswan_binstateload)}() returned false!");
 
 			var d = BinaryQuickSerializer.Create<TextStateData>(reader);
 			LoadTextStateData(d);
@@ -88,8 +88,8 @@ namespace BizHawk.Emulation.Cores.WonderSwan
 
 		public byte[] SaveStateBinary()
 		{
-			var ms = new MemoryStream(savebuff2, true);
-			var bw = new BinaryWriter(ms);
+			using var ms = new MemoryStream(savebuff2, true);
+			using var bw = new BinaryWriter(ms);
 			SaveStateBinary(bw);
 			bw.Flush();
 			if (ms.Position != savebuff2.Length)
@@ -98,9 +98,6 @@ namespace BizHawk.Emulation.Cores.WonderSwan
 			return savebuff2;
 		}
 
-		public bool BinarySaveStatesPreferred
-		{
-			get { return true; }
-		}
+		public bool BinarySaveStatesPreferred => true;
 	}
 }

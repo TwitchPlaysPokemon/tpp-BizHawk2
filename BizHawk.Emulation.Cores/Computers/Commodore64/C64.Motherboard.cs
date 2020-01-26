@@ -29,7 +29,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 		// ports
 		public readonly CartridgePort CartPort;
 		public readonly CassettePort Cassette;
-		public IController Controller;
+		public IController Controller = NullController.Instance;
 		public readonly SerialPort Serial;
 		public readonly TapeDrive TapeDrive;
 		public readonly UserPort User;
@@ -38,8 +38,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 		public readonly Drive1541 DiskDrive;
 
 		// state
-		//public int address;
-		public int Bus;
 		public bool InputRead;
 		public bool Irq;
 		public bool Nmi;
@@ -100,23 +98,23 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			{
 				case C64.VicType.Ntsc:
 					Vic = Chip6567R8.Create(borderType);
-					Cia0 = Chip6526.Create(C64.CiaType.Ntsc, Input_ReadKeyboard, Input_ReadJoysticks);
-					Cia1 = Chip6526.Create(C64.CiaType.Ntsc, Cia1_ReadPortA);
+					Cia0 = Chip6526.CreateCia0(C64.CiaType.Ntsc, Input_ReadKeyboard, Input_ReadJoysticks);
+					Cia1 = Chip6526.CreateCia1(C64.CiaType.Ntsc, Cia1_ReadPortA, () => 0xFF);
 					break;
 				case C64.VicType.Pal:
 					Vic = Chip6569.Create(borderType);
-					Cia0 = Chip6526.Create(C64.CiaType.Pal, Input_ReadKeyboard, Input_ReadJoysticks);
-					Cia1 = Chip6526.Create(C64.CiaType.Pal, Cia1_ReadPortA);
+					Cia0 = Chip6526.CreateCia0(C64.CiaType.Pal, Input_ReadKeyboard, Input_ReadJoysticks);
+					Cia1 = Chip6526.CreateCia1(C64.CiaType.Pal, Cia1_ReadPortA, () => 0xFF);
 					break;
 				case C64.VicType.NtscOld:
 					Vic = Chip6567R56A.Create(borderType);
-					Cia0 = Chip6526.Create(C64.CiaType.NtscRevA, Input_ReadKeyboard, Input_ReadJoysticks);
-					Cia1 = Chip6526.Create(C64.CiaType.NtscRevA, Cia1_ReadPortA);
+					Cia0 = Chip6526.CreateCia0(C64.CiaType.NtscRevA, Input_ReadKeyboard, Input_ReadJoysticks);
+					Cia1 = Chip6526.CreateCia1(C64.CiaType.NtscRevA, Cia1_ReadPortA, () => 0xFF);
 					break;
 				case C64.VicType.Drean:
 					Vic = Chip6572.Create(borderType);
-					Cia0 = Chip6526.Create(C64.CiaType.Pal, Input_ReadKeyboard, Input_ReadJoysticks);
-					Cia1 = Chip6526.Create(C64.CiaType.Pal, Cia1_ReadPortA);
+					Cia0 = Chip6526.CreateCia0(C64.CiaType.Pal, Input_ReadKeyboard, Input_ReadJoysticks);
+					Cia1 = Chip6526.CreateCia1(C64.CiaType.Pal, Cia1_ReadPortA, () => 0xFF);
 					break;
 			}
 			User = new UserPort();
@@ -146,6 +144,11 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			BasicRom = new Chip23128();
 			CharRom = new Chip23128();
 			KernalRom = new Chip23128();
+			
+			if (Cpu != null)
+				Cpu.DebuggerStep = Execute;
+			if (DiskDrive != null)
+				DiskDrive.DebuggerStep = Execute;
 		}
 
 		public int ClockNumerator { get; }
@@ -156,7 +159,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 		{
 			_vicBank = (0x3 - ((Cia1.PrA | ~Cia1.DdrA) & 0x3)) << 14;
 
-			Vic.ExecutePhase();
+			Vic.ExecutePhase1();
 			CartPort.ExecutePhase();
 			Cassette.ExecutePhase();
 			Serial.ExecutePhase();
@@ -164,6 +167,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			Cia0.ExecutePhase();
 			Cia1.ExecutePhase();
 			Cpu.ExecutePhase();
+			Vic.ExecutePhase2();
 		}
 
 		public void Flush()
@@ -174,7 +178,8 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 		// -----------------------------------------
 		public void HardReset()
 		{
-			Bus = 0xFF;
+			_lastReadVicAddress = 0x3FFF;
+			_lastReadVicData = 0xFF;
 			InputRead = false;
 
 			Cia0.HardReset();
@@ -188,6 +193,25 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			Cassette.HardReset();
 			Serial.HardReset();
 			Cpu.HardReset();
+			CartPort.HardReset();
+		}
+
+		public void SoftReset()
+		{
+			// equivalent to a hard reset EXCEPT cpu, color ram, memory
+			_lastReadVicAddress = 0x3FFF;
+			_lastReadVicData = 0xFF;
+			InputRead = false;
+
+			Cia0.HardReset();
+			Cia1.HardReset();
+			Serial.HardReset();
+			Sid.HardReset();
+			Vic.HardReset();
+			User.HardReset();
+			Cassette.HardReset();
+			Serial.HardReset();
+			Cpu.SoftReset();
 			CartPort.HardReset();
 		}
 
@@ -210,6 +234,7 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			Cpu.ReadMemory = Pla.Read;
 			Cpu.WriteMemory = Pla.Write;
 			Cpu.WriteMemoryPort = Cpu_WriteMemoryPort;
+			Cpu.ReadBus = ReadOpenBus;
 
 			Pla.PeekBasicRom = BasicRom.Peek;
 			Pla.PeekCartridgeHi = CartPort.PeekHiRom;
@@ -234,8 +259,6 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 			Pla.PokeMemory = Ram.Poke;
 			Pla.PokeSid = Sid.Poke;
 			Pla.PokeVic = Vic.Poke;
-			Pla.ReadAec = Vic.ReadAec;
-			Pla.ReadBa = Vic.ReadBa;
 			Pla.ReadBasicRom = BasicRom.Read;
 			Pla.ReadCartridgeHi = CartPort.ReadHiRom;
 			Pla.ReadCartridgeLo = CartPort.ReadLoRom;
@@ -278,83 +301,82 @@ namespace BizHawk.Emulation.Cores.Computers.Commodore64
 
 		public void SyncState(Serializer ser)
 		{
-			ser.BeginSection("Cia0");
+			ser.BeginSection(nameof(Cia0));
 			Cia0.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Cia1");
+			ser.BeginSection(nameof(Cia1));
 			Cia1.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("ColorRam");
+			ser.BeginSection(nameof(ColorRam));
 			ColorRam.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Cpu");
+			ser.BeginSection(nameof(Cpu));
 			Cpu.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Pla");
+			ser.BeginSection(nameof(Pla));
 			Pla.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Ram");
+			ser.BeginSection(nameof(Ram));
 			Ram.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Sid");
+			ser.BeginSection(nameof(Sid));
 			Sid.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Vic");
+			ser.BeginSection(nameof(Vic));
 			Vic.SyncState(ser);
 			ser.EndSection();
 
 			if (CartPort.IsConnected)
 			{
-				ser.BeginSection("CartPort");
+				ser.BeginSection(nameof(CartPort));
 				CartPort.SyncState(ser);
 				ser.EndSection();
 			}
 
-			ser.BeginSection("Cassette");
+			ser.BeginSection(nameof(Cassette));
 			Cassette.SyncState(ser);
 			ser.EndSection();
 
-			ser.BeginSection("Serial");
+			ser.BeginSection(nameof(Serial));
 			Serial.SyncState(ser);
 			ser.EndSection();
 
 			if (TapeDrive != null) // TODO: a tape object is already in a nested class, is it the same reference? do we need this?
 			{
-				ser.BeginSection("TapeDrive");
+				ser.BeginSection(nameof(TapeDrive));
 				TapeDrive.SyncState(ser);
 				ser.EndSection();
 			}
 
-			ser.BeginSection("User");
+			ser.BeginSection(nameof(User));
 			User.SyncState(ser);
 			ser.EndSection();
 
 			if (DiskDrive != null) // TODO: a disk object is already in a nested class, is it the same reference? do we need this?
 			{
-				ser.BeginSection("DiskDrive");
+				ser.BeginSection(nameof(DiskDrive));
 				DiskDrive.SyncState(ser);
 				ser.EndSection();
 			}
 
-			ser.Sync("Bus", ref Bus);
-			ser.Sync("InputRead", ref InputRead);
-			ser.Sync("Irq", ref Irq);
-			ser.Sync("Nmi", ref Nmi);
+			ser.Sync(nameof(InputRead), ref InputRead);
+			ser.Sync(nameof(Irq), ref Irq);
+			ser.Sync(nameof(Nmi), ref Nmi);
 
-			ser.Sync("_lastReadVicAddress", ref _lastReadVicAddress);
-			ser.Sync("_lastReadVicData", ref _lastReadVicData);
-			ser.Sync("_vicBank", ref _vicBank);
+			ser.Sync(nameof(_lastReadVicAddress), ref _lastReadVicAddress);
+			ser.Sync(nameof(_lastReadVicData), ref _lastReadVicData);
+			ser.Sync(nameof(_vicBank), ref _vicBank);
 
-			ser.Sync("_joystickPressed", ref _joystickPressed, useNull: false);
-			ser.Sync("_keyboardPressed", ref _keyboardPressed, useNull: false);
-			ser.Sync("_restorePressed", ref _restorePressed);
+			ser.Sync(nameof(_joystickPressed), ref _joystickPressed, useNull: false);
+			ser.Sync(nameof(_keyboardPressed), ref _keyboardPressed, useNull: false);
+			ser.Sync(nameof(_restorePressed), ref _restorePressed);
 		}
 	}
 }

@@ -13,8 +13,18 @@ namespace BizHawk.Emulation.Cores.Components.CP1610
 		internal bool FlagS, FlagC, FlagZ, FlagO, FlagI, FlagD, IntRM, BusRq, BusAk, Interruptible, Interrupted;
 		//private bool MSync;
 		internal ushort[] Register = new ushort[8];
-		private ushort RegisterSP { get { return Register[6]; } set { Register[6] = value; } }
-		private ushort RegisterPC { get { return Register[7]; } set { Register[7] = value; } }
+
+		private ushort RegisterSP
+		{
+			get => Register[6];
+			set => Register[6] = value;
+		}
+
+		private ushort RegisterPC
+		{
+			get => Register[7];
+			set => Register[7] = value;
+		}
 
 		public string TraceHeader
 		{
@@ -31,7 +41,8 @@ namespace BizHawk.Emulation.Cores.Components.CP1610
 		{
 			if (MemoryCallbacks != null && !peek)
 			{
-				MemoryCallbacks.CallReads(addr);
+				uint flags = (uint)(MemoryCallbackFlags.AccessRead);
+				MemoryCallbacks.CallMemoryCallbacks(addr, 0, flags, "System Bus");
 			}
 
 			return ReadMemory(addr, peek);
@@ -41,7 +52,8 @@ namespace BizHawk.Emulation.Cores.Components.CP1610
 		{
 			if (MemoryCallbacks != null && !poke)
 			{
-				MemoryCallbacks.CallWrites(addr);
+				uint flags = (uint)(MemoryCallbackFlags.AccessWrite);
+				MemoryCallbacks.CallMemoryCallbacks(addr, value, flags, "System Bus");
 			}
 
 			WriteMemory(addr, value, poke);
@@ -58,21 +70,21 @@ namespace BizHawk.Emulation.Cores.Components.CP1610
 
 		public void SyncState(Serializer ser)
 		{
-			ser.BeginSection("CP1610");
+			ser.BeginSection(nameof(CP1610));
 
-			ser.Sync("Register", ref Register, false);
-			ser.Sync("FlagS", ref FlagS);
-			ser.Sync("FlagC", ref FlagC);
-			ser.Sync("FlagZ", ref FlagZ);
-			ser.Sync("FlagO", ref FlagO);
-			ser.Sync("FlagI", ref FlagI);
-			ser.Sync("FlagD", ref FlagD);
-			ser.Sync("IntRM", ref IntRM);
-			ser.Sync("BusRq", ref BusRq);
-			ser.Sync("BusAk", ref BusAk);
-			ser.Sync("BusRq", ref BusRq);
-			ser.Sync("Interruptible", ref Interruptible);
-			ser.Sync("Interrupted", ref Interrupted);
+			ser.Sync(nameof(Register), ref Register, false);
+			ser.Sync(nameof(FlagS), ref FlagS);
+			ser.Sync(nameof(FlagC), ref FlagC);
+			ser.Sync(nameof(FlagZ), ref FlagZ);
+			ser.Sync(nameof(FlagO), ref FlagO);
+			ser.Sync(nameof(FlagI), ref FlagI);
+			ser.Sync(nameof(FlagD), ref FlagD);
+			ser.Sync(nameof(IntRM), ref IntRM);
+			ser.Sync(nameof(BusRq), ref BusRq);
+			ser.Sync(nameof(BusAk), ref BusAk);
+			ser.Sync(nameof(BusRq), ref BusRq);
+			ser.Sync(nameof(Interruptible), ref Interruptible);
+			ser.Sync(nameof(Interrupted), ref Interrupted);
 			ser.Sync("Toal_executed_cycles", ref TotalExecutedCycles);
 			ser.Sync("Pending_Cycles", ref PendingCycles);
 

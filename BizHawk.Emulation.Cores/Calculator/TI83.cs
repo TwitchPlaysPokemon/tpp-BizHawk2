@@ -50,7 +50,7 @@ namespace BizHawk.Emulation.Cores.Calculators
 		private readonly byte[] _rom;
 
 		// configuration
-		private IController _controller;
+		private IController _controller = NullController.Instance;
 
 		private byte[] _ram;
 		private byte[] _vram = new byte[0x300];
@@ -137,6 +137,8 @@ namespace BizHawk.Emulation.Cores.Calculators
 
 		private void WriteHardware(ushort addr, byte value)
 		{
+			addr &= 0xFF;
+
 			switch (addr)
 			{
 				case 0: // PORT_LINK
@@ -208,9 +210,7 @@ namespace BizHawk.Emulation.Cores.Calculators
 
 					TIM_mult = ((value & 0x10) == 0x10) ? 1800 : 1620;
 
-					TIM_hit = (int)Math.Floor((double)TIM_mult / (3 + TIM_frq * 2));
-
-					TIM_hit = (int)Math.Floor((double)6000000 / TIM_hit);
+					TIM_hit = (int) Math.Floor(6000000.0 / Math.Floor((double) TIM_mult / (2 * TIM_frq + 3)));
 
 					// Bit 0 is some form of memory mapping
 
@@ -232,6 +232,8 @@ namespace BizHawk.Emulation.Cores.Calculators
 
 		private byte ReadHardware(ushort addr)
 		{
+			addr &= 0xFF;
+
 			switch (addr)
 			{
 				case 0: // PORT_LINK

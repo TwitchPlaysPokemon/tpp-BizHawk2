@@ -7,6 +7,7 @@ using BizHawk.Emulation.Cores.Sega.MasterSystem;
 namespace BizHawk.Client.EmuHawk
 {
 	[Schema("SMS")]
+	// ReSharper disable once UnusedMember.Global
 	public class SmsSchema : IVirtualPadSchema
 	{
 		public IEnumerable<PadSchema> GetPadSchemas(IEmulator core)
@@ -34,42 +35,42 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Up",
+						Name = $"P{controller} Up",
 						Icon = Properties.Resources.BlueUp,
 						Location = new Point(14, 12),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Down",
+						Name = $"P{controller} Down",
 						Icon = Properties.Resources.BlueDown,
 						Location = new Point(14, 56),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left",
+						Name = $"P{controller} Left",
 						Icon = Properties.Resources.Back,
 						Location = new Point(2, 34),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right",
+						Name = $"P{controller} Right",
 						Icon = Properties.Resources.Forward,
 						Location = new Point(24, 34),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B1",
+						Name = $"P{controller} B1",
 						DisplayName = "1",
 						Location = new Point(122, 34),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B2",
+						Name = $"P{controller} B2",
 						DisplayName = "2",
 						Location = new Point(146, 34),
 						Type = PadSchema.PadInputType.Boolean
@@ -88,49 +89,49 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Up",
+						Name = $"P{controller} Up",
 						Icon = Properties.Resources.BlueUp,
 						Location = new Point(14, 12),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Down",
+						Name = $"P{controller} Down",
 						Icon = Properties.Resources.BlueDown,
 						Location = new Point(14, 56),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left",
+						Name = $"P{controller} Left",
 						Icon = Properties.Resources.Back,
 						Location = new Point(2, 34),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right",
+						Name = $"P{controller} Right",
 						Icon = Properties.Resources.Forward,
 						Location = new Point(24, 34),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Start",
+						Name = $"P{controller} Start",
 						DisplayName = "S",
 						Location = new Point(134, 12),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B1",
+						Name = $"P{controller} B1",
 						DisplayName = "1",
 						Location = new Point(122, 34),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B2",
+						Name = $"P{controller} B2",
 						DisplayName = "2",
 						Location = new Point(146, 34),
 						Type = PadSchema.PadInputType.Boolean

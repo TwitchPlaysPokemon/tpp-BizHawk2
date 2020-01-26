@@ -1,5 +1,5 @@
 ﻿using BizHawk.Common;
-using BizHawk.Common.BizInvoke;
+using BizHawk.BizInvoke;
 using BizHawk.Emulation.Common;
 using PeNet;
 using System;
@@ -97,19 +97,16 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				var imports = _parent._exports[moduleName];
 				var pointers = entries.Select(e =>
 				{
-					var ptr = imports.Resolve(e);
-					if (ptr == IntPtr.Zero)
+					var ptr = imports.GetProcAddrOrNull(e);
+					if (ptr != null) return ptr.Value;
+					var s = $"Trapped on unimplemented function {moduleName}:{e}";
+					Action del = () =>
 					{
-						var s = string.Format("Trapped on unimplemented function {0}:{1}", moduleName, e);
-						Action del = () =>
-						{
-							Console.WriteLine(s);
-							throw new InvalidOperationException(s);
-						};
-						_traps.Add(del);
-						ptr = CallingConventionAdapters.Waterbox.GetFunctionPointerForDelegate(del);
-					}
-					return ptr;
+						Console.WriteLine(s);
+						throw new InvalidOperationException(s);
+					};
+					_traps.Add(del);
+					return CallingConventionAdapters.Waterbox.GetFunctionPointerForDelegate(del);
 				}).ToArray();
 				Marshal.Copy(pointers, 0, table, pointers.Length);
 			}
@@ -423,13 +420,13 @@ namespace BizHawk.Emulation.Cores.Waterbox
 			{
 				var heap = _parent._heap;
 
-				var start = heap.Memory.Start;
+				var start = heap.Memory.AddressRange.Start;
 				var end = start + heap.Used;
-				var max = heap.Memory.End;
+				var max = heap.Memory.AddressRange.EndInclusive;
 
 				var p = (ulong)_p;
 
-				if (p < start || p > max)
+				if (p < start || max + 1 < p) //TODO bug?
 				{
 					// failure: return current break
 					return Z.UU(end);
@@ -662,18 +659,18 @@ namespace BizHawk.Emulation.Cores.Waterbox
 			{
 				if (address != IntPtr.Zero)
 					return Z.SS(-1);
-				MemoryBlock.Protection mprot;
+				MemoryBlockBase.Protection mprot;
 				switch (prot)
 				{
-					case 0: mprot = MemoryBlock.Protection.None; break;
+					case 0: mprot = MemoryBlockBase.Protection.None; break;
 					default:
 					case 6: // W^X
 					case 7: // W^X
 					case 4: // exec only????
 					case 2: return Z.SS(-1); // write only????
-					case 3: mprot = MemoryBlock.Protection.RW; break;
-					case 1: mprot = MemoryBlock.Protection.R; break;
-					case 5: mprot = MemoryBlock.Protection.RX; break;
+					case 3: mprot = MemoryBlockBase.Protection.RW; break;
+					case 1: mprot = MemoryBlockBase.Protection.R; break;
+					case 5: mprot = MemoryBlockBase.Protection.RX; break;
 				}
 				if ((flags & 0x20) == 0)
 				{
@@ -711,18 +708,18 @@ namespace BizHawk.Emulation.Cores.Waterbox
 			[BizExport(CallingConvention.Cdecl, EntryPoint = "n10")]
 			public int MProtect(UIntPtr address, UIntPtr size, int prot)
 			{
-				MemoryBlock.Protection mprot;
+				MemoryBlockBase.Protection mprot;
 				switch (prot)
 				{
-					case 0: mprot = MemoryBlock.Protection.None; break;
+					case 0: mprot = MemoryBlockBase.Protection.None; break;
 					default:
 					case 6: // W^X
 					case 7: // W^X
 					case 4: // exec only????
 					case 2: return -1; // write only????
-					case 3: mprot = MemoryBlock.Protection.RW; break;
-					case 1: mprot = MemoryBlock.Protection.R; break;
-					case 5: mprot = MemoryBlock.Protection.RX; break;
+					case 3: mprot = MemoryBlockBase.Protection.RW; break;
+					case 1: mprot = MemoryBlockBase.Protection.R; break;
+					case 5: mprot = MemoryBlockBase.Protection.RX; break;
 				}
 				return _parent._mmapheap.Protect((ulong)address, (ulong)size, mprot) ? 0 : -1;
 			}
@@ -1063,7 +1060,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				_syscalls.Init();
 
 				Console.WriteLine("About to enter unmanaged code");
-				if (Win32Hacks.IsDebuggerReallyPresent() && !System.Diagnostics.Debugger.IsAttached)
+				if (!OSTailoredCode.IsUnixHost && !System.Diagnostics.Debugger.IsAttached && Win32Imports.IsDebuggerPresent())
 				{
 					// this means that GDB or another unconventional debugger is attached.
 					// if that's the case, and it's observing this core, it probably wants a break
@@ -1071,8 +1068,8 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				}
 
 				// run unmanaged init code
-				var libcEnter = _exports["libc.so"].SafeResolve("__libc_entry_routine");
-				var psxInit = _exports["libpsxscl.so"].SafeResolve("__psx_init");
+				var libcEnter = _exports["libc.so"].GetProcAddrOrThrow("__libc_entry_routine");
+				var psxInit = _exports["libpsxscl.so"].GetProcAddrOrThrow("__psx_init");
 
 				var del = (LibcEntryRoutineD)CallingConventionAdapters.Waterbox.GetDelegateForFunctionPointer(libcEnter, typeof(LibcEntryRoutineD));
 				// the current mmglue code doesn't use the main pointer at all, and this just returns
@@ -1101,11 +1098,9 @@ namespace BizHawk.Emulation.Cores.Waterbox
 			}
 		}
 
-		public IntPtr Resolve(string entryPoint)
-		{
-			// modules[0] is always the main module
-			return _modules[0].Resolve(entryPoint);
-		}
+		public IntPtr? GetProcAddrOrNull(string entryPoint) => _modules[0].GetProcAddrOrNull(entryPoint); // _modules[0] is always the main module
+
+		public IntPtr GetProcAddrOrThrow(string entryPoint) => _modules[0].GetProcAddrOrThrow(entryPoint);
 
 		public void Seal()
 		{
@@ -1121,7 +1116,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				if (_exports.TryGetValue("libco.so", out libco))
 				{
 					Console.WriteLine("Calling co_clean()...");
-					CallingConventionAdapters.Waterbox.GetDelegateForFunctionPointer<Action>(libco.SafeResolve("co_clean"))();
+					CallingConventionAdapters.Waterbox.GetDelegateForFunctionPointer<Action>(libco.GetProcAddrOrThrow("co_clean"))();
 				}
 
 				_sealedheap.Seal();
@@ -1154,7 +1149,6 @@ namespace BizHawk.Emulation.Cores.Waterbox
 		/// Adds a file that will appear to the waterbox core's libc.  the file will be read only.
 		/// All savestates must have the same file list, so either leave it up forever or remove it during init!
 		/// </summary>
-		/// <param name="data"></param>
 		/// <param name="name">the filename that the unmanaged core will access the file by</param>
 		public void AddReadonlyFile(byte[] data, string name)
 		{
@@ -1165,7 +1159,6 @@ namespace BizHawk.Emulation.Cores.Waterbox
 		/// Remove a file previously added by AddReadonlyFile.  Frees the internal copy of the filedata, saving memory.
 		/// All savestates must have the same file list, so either leave it up forever or remove it during init!
 		/// </summary>
-		/// <param name="name"></param>
 		public void RemoveReadonlyFile(string name)
 		{
 			_syscalls.RemoveReadonlyFile(name);
@@ -1217,7 +1210,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				{
 					// if a different runtime instance than this one saved the state,
 					// Exvoker imports need to be reconnected
-					Console.WriteLine("Restoring PeRunner state from a different core...");
+					Console.WriteLine($"Restoring {nameof(PeRunner)} state from a different core...");
 					ConnectAllImports();
 					_psx.ReloadVtables();
 				}

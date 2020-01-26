@@ -2,6 +2,8 @@
 using System.Globalization;
 using System.IO;
 
+using BizHawk.Common;
+
 namespace BizHawk.Client.Common
 {
 	public partial class Bk2Movie
@@ -20,25 +22,25 @@ namespace BizHawk.Client.Common
 		{
 			if (frame < FrameCount && frame >= 0)
 			{
-				int getframe;
+				int getFrame;
 
 				if (LoopOffset.HasValue)
 				{
 					if (frame < Log.Count)
 					{
-						getframe = frame;
+						getFrame = frame;
 					}
 					else
 					{
-						getframe = ((frame - LoopOffset.Value) % (Log.Count - LoopOffset.Value)) + LoopOffset.Value;
+						getFrame = ((frame - LoopOffset.Value) % (Log.Count - LoopOffset.Value)) + LoopOffset.Value;
 					}
 				}
 				else
 				{
-					getframe = frame;
+					getFrame = frame;
 				}
 
-				return Log[getframe];
+				return Log[getFrame];
 			}
 
 			return "";
@@ -70,7 +72,7 @@ namespace BizHawk.Client.Common
 					// in BK2, this is part of the input log, and not involved with the core state at all
 					// accordingly, this case (for special neshawk format frame numbers) is irrelevant
 					// probably
-					else if (line.Contains("Frame 0x")) // NES stores frame count in hex, yay
+					if (line.Contains("Frame 0x")) // NES stores frame count in hex, yay
 					{
 						var strs = line.Split('x');
 						try
@@ -162,7 +164,7 @@ namespace BizHawk.Client.Common
 
 			var stateFramei = stateFrame ?? 0;
 
-			if (stateFramei > 0 && stateFramei < Log.Count)
+			if (stateFramei.StrictlyBoundedBy(0.RangeTo(Log.Count)))
 			{
 				if (!Global.Config.VBAStyleMovieLoadState)
 				{
@@ -176,7 +178,7 @@ namespace BizHawk.Client.Common
 					Truncate(Log.Count);
 				}
 
-				Mode = Moviemode.Finished;
+				Mode = MovieMode.Finished;
 			}
 
 			if (IsCountingRerecords)
@@ -245,15 +247,12 @@ namespace BizHawk.Client.Common
 
 			if (Log.Count < stateFrame)
 			{
-				if (IsFinished)
+				if (this.IsFinished())
 				{
 					return true;
 				}
 
-				errorMessage = "The savestate is from frame "
-					+ newLog.Count
-					+ " which is greater than the current movie length of "
-					+ Log.Count;
+				errorMessage = $"The savestate is from frame {newLog.Count} which is greater than the current movie length of {Log.Count}";
 
 				return false;
 			}
@@ -262,9 +261,7 @@ namespace BizHawk.Client.Common
 			{
 				if (Log[i] != newLog[i])
 				{
-					errorMessage = "The savestate input does not match the movie input at frame "
-						+ (i + 1)
-						+ ".";
+					errorMessage = $"The savestate input does not match the movie input at frame {(i + 1)}.";
 
 					return false;
 				}
@@ -272,18 +269,18 @@ namespace BizHawk.Client.Common
 
 			if (stateFrame > newLog.Count) // stateFrame is greater than state input log, so movie finished mode
 			{
-				if (Mode == Moviemode.Play || Mode == Moviemode.Finished)
+				if (Mode == MovieMode.Play || Mode == MovieMode.Finished)
 				{
-					Mode = Moviemode.Finished;
+					Mode = MovieMode.Finished;
 					return true;
 				}
 
 				return false;
 			}
 
-			if (Mode == Moviemode.Finished)
+			if (Mode == MovieMode.Finished)
 			{
-				Mode = Moviemode.Play;
+				Mode = MovieMode.Play;
 			}
 
 			return true;

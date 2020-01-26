@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-
+﻿using System.IO;
 using BizHawk.Common.BufferExtensions;
 using BizHawk.Emulation.Common;
 
@@ -48,8 +46,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.SNES
 
 		public byte[] SaveStateBinary()
 		{
-			var ms = new MemoryStream();
-			var bw = new BinaryWriter(ms);
+			using var ms = new MemoryStream();
+			using var bw = new BinaryWriter(ms);
 			SaveStateBinary(bw);
 			bw.Flush();
 			return ms.ToArray();

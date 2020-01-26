@@ -38,13 +38,13 @@ namespace BizHawk.Client.EmuHawk
 
 		public void RefreshTooltip()
 		{
-			string widgetText = "Current Binding: " + widget.Text;
+			string widgetText = $"Current Binding: {widget.Text}";
 			if (_bindingTooltipText != null)
 			{
-				widgetText = widgetText + "\r\n---\r\n" + _bindingTooltipText;
+				widgetText = $"{widgetText}\r\n---\r\n{_bindingTooltipText}";
 			}
 
-			widgetText = widgetText + "\r\n---\r\n" + WidgetTooltipText;
+			widgetText = $"{widgetText}\r\n---\r\n{WidgetTooltipText}";
 			_tooltip.SetToolTip(widget, widgetText);
 		}
 
@@ -64,10 +64,9 @@ namespace BizHawk.Client.EmuHawk
 
 		private readonly ContextMenuStrip _dropdownMenu;
 
-		public bool AutoTab { get { return widget.AutoTab; } set { widget.AutoTab = value; } }
-		public string WidgetName { get { return widget.WidgetName; } set { widget.WidgetName = value; } }
-
-		public string Bindings { get { return widget.Bindings; } set { widget.Bindings = value; } }
+		public bool AutoTab { get => widget.AutoTab; set => widget.AutoTab = value; }
+		public string WidgetName { get => widget.WidgetName; set => widget.WidgetName = value; }
+		public string Bindings { get => widget.Bindings; set => widget.Bindings = value; }
 
 		public void Clear()
 		{

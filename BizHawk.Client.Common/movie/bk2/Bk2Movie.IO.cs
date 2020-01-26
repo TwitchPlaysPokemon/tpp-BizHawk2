@@ -20,9 +20,10 @@ namespace BizHawk.Client.Common
 				return;
 			}
 
+			var backupDir = PathManager.MakeAbsolutePath(Global.Config.PathEntries.MoviesBackupsPathFragment, null);
 			var backupName = Filename;
 			backupName = backupName.Insert(Filename.LastIndexOf("."), $".{DateTime.Now:yyyy-MM-dd HH.mm.ss}");
-			backupName = Path.Combine(Global.Config.PathEntries["Global", "Movie backups"].Path, Path.GetFileName(backupName));
+			backupName = Path.Combine(backupDir, Path.GetFileName(backupName));
 
 			var directoryInfo = new FileInfo(backupName).Directory;
 			if (directoryInfo != null)
@@ -165,6 +166,17 @@ namespace BizHawk.Client.Common
 
 		protected virtual void Write(string fn, bool backup = false)
 		{
+			if (Global.Emulator is Emulation.Cores.Nintendo.SubNESHawk.SubNESHawk)
+			{
+				var _subnes = (Emulation.Cores.Nintendo.SubNESHawk.SubNESHawk)Global.Emulator;
+				Header["VBlankCount"] = _subnes.VBL_CNT.ToString();
+			}
+			else if (Global.Emulator is Emulation.Cores.Nintendo.Gameboy.Gameboy)
+			{
+				var _gameboy = (Emulation.Cores.Nintendo.Gameboy.Gameboy)Global.Emulator;
+				Header["CycleCount"] = _gameboy.CycleCount.ToString();
+			}
+
 			var file = new FileInfo(fn);
 			if (!file.Directory.Exists)
 			{

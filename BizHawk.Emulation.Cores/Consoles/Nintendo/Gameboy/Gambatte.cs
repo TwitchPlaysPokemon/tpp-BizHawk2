@@ -49,32 +49,14 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 
 			if (GambatteState == IntPtr.Zero)
 			{
-				throw new InvalidOperationException("gambatte_create() returned null???");
+				throw new InvalidOperationException($"{nameof(LibGambatte.gambatte_create)}() returned null???");
 			}
 
 			Console.WriteLine(game.System);
 
-			byte[] BiosRom;
-
-			if (game.System == "GB")
-			{
-				BiosRom = comm.CoreFileProvider.GetFirmware("GB", "World", false);
-			}
-			else
-			{
-				BiosRom = comm.CoreFileProvider.GetFirmware("GBC", "World", false);
-			}
-
-			int bios_length = BiosRom == null ? 0 : BiosRom.Length;
-
 			try
 			{
 				_syncSettings = (GambatteSyncSettings)syncSettings ?? new GambatteSyncSettings();
-
-				// copy over non-loadflag syncsettings now; they won't take effect if changed later
-				zerotime = (uint)_syncSettings.RTCInitialTime;
-
-				real_rtc_time = !DeterministicEmulation && _syncSettings.RealTimeRTC;
 
 				LibGambatte.LoadFlags flags = 0;
 
@@ -82,32 +64,13 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 				{
 					case GambatteSyncSettings.ConsoleModeType.GB:
 						flags |= LibGambatte.LoadFlags.FORCE_DMG;
-						// we need to change the BIOS to GB bios
-						if (game.System == "GBC")
-						{
-							BiosRom = comm.CoreFileProvider.GetFirmware("GB", "World", false);
-							bios_length = BiosRom.Length;
-						}
 						break;
 					case GambatteSyncSettings.ConsoleModeType.GBC:
-						BiosRom = comm.CoreFileProvider.GetFirmware("GBC", "World", false);
-						bios_length = BiosRom.Length;
 						break;
 					default:
 						if (game.System == "GB")
 							flags |= LibGambatte.LoadFlags.FORCE_DMG;
 						break;
-				}
-
-				if (_syncSettings.EnableBIOS && BiosRom == null)
-				{
-					throw new MissingFirmwareException("Boot Rom not found");
-				}
-
-				// to disable BIOS loading into gambatte, just set bios_length to 0
-				if (!_syncSettings.EnableBIOS)
-				{
-					bios_length = 0;
 				}
 
 				if (_syncSettings.GBACGB)
@@ -120,9 +83,25 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 					flags |= LibGambatte.LoadFlags.MULTICART_COMPAT;
 				}
 
-				if (LibGambatte.gambatte_load(GambatteState, file, (uint)file.Length, BiosRom, (uint)bios_length, GetCurrentTime(), flags) != 0)
+				if (LibGambatte.gambatte_load(GambatteState, file, (uint)file.Length, flags) != 0)
 				{
-					throw new InvalidOperationException("gambatte_load() returned non-zero (is this not a gb or gbc rom?)");
+					throw new InvalidOperationException($"{nameof(LibGambatte.gambatte_load)}() returned non-zero (is this not a gb or gbc rom?)");
+				}
+
+				byte[] Bios;
+				if ((flags & LibGambatte.LoadFlags.FORCE_DMG) == LibGambatte.LoadFlags.FORCE_DMG)
+				{
+					Bios = comm.CoreFileProvider.GetFirmware("GB", "World", true, "BIOS Not Found, Cannot Load");
+					IsCgb = false;
+				}
+				else
+				{
+					Bios = comm.CoreFileProvider.GetFirmware("GBC", "World", true, "BIOS Not Found, Cannot Load");
+					IsCgb = true;
+				}				
+				if (LibGambatte.gambatte_loadbios(GambatteState, Bios, (uint)Bios.Length) != 0)
+				{
+					throw new InvalidOperationException($"{nameof(LibGambatte.gambatte_loadbios)}() returned non-zero (bios error)");
 				}
 
 				// set real default colors (before anyone mucks with them at all)
@@ -147,8 +126,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 				string romname = System.Text.Encoding.ASCII.GetString(buff);
 				Console.WriteLine("Core reported rom name: {0}", romname);
 
-				TimeCallback = new LibGambatte.RTCCallback(GetCurrentTime);
-				LibGambatte.gambatte_setrtccallback(GambatteState, TimeCallback);
+				if (!DeterministicEmulation && _syncSettings.RealTimeRTC)
+				{
+					LibGambatte.gambatte_settimemode(GambatteState, false);
+				}
+				LibGambatte.gambatte_setrtcdivisoroffset(GambatteState, _syncSettings.RTCDivisorOffset);
 
 				_cdCallback = new LibGambatte.CDCallback(CDCallbackProc);
 
@@ -181,57 +163,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// </summary>
 		private LibGambatte.Buttons CurrentButtons = 0;
 
-		#region RTC
-
-		/// <summary>
-		/// RTC time when emulation begins.
-		/// </summary>
-		private readonly uint zerotime = 0;
-
-		/// <summary>
-		/// if true, RTC will run off of real elapsed time
-		/// </summary>
-		private bool real_rtc_time = false;
-
-		private LibGambatte.RTCCallback TimeCallback;
-
-		private static long GetUnixNow()
-		{
-			// because internally the RTC works off of relative time, we don't need to base
-			// this off of any particular canonical epoch.
-			return DateTime.UtcNow.Ticks / 10000000L - 60000000000L;
-		}
-
-		private uint GetCurrentTime()
-		{
-			if (real_rtc_time)
-			{
-				return (uint)GetUnixNow();
-			}
-
-			ulong fn = (ulong)Frame;
-
-			// as we're exactly tracking cpu cycles, this can be pretty accurate
-			fn *= 4389;
-			fn /= 262144;
-			fn += zerotime;
-			return (uint)fn;
-		}
-
-		private uint GetInitialTime()
-		{
-			if (real_rtc_time)
-			{
-				return (uint)GetUnixNow();
-			}
-
-			// setting the initial boot time to 0 will cause our zerotime
-			// to function as an initial offset, which is what we want
-			return 0;
-		}
-
-		#endregion
-
 		#region ALL SAVESTATEABLE STATE GOES HERE
 
 		/// <summary>
@@ -241,6 +172,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 
 		public int LagCount { get; set; }
 		public bool IsLagFrame { get; set; }
+		public bool IsCgb { get; set; }
 
 		// all cycle counts are relative to a 2*1024*1024 mhz refclock
 
@@ -248,6 +180,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// total cycles actually executed
 		/// </summary>
 		private ulong _cycleCount = 0;
+		private ulong callbackCycleCount = 0;
 
 		/// <summary>
 		/// number of extra cycles we overran in the last frame
@@ -283,7 +216,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// </summary>
 		public bool IsCGBMode()
 		{
-			return LibGambatte.gambatte_iscgb(GambatteState);
+			//return LibGambatte.gambatte_iscgb(GambatteState);
+			return IsCgb;
 		}
 
 		private InputCallbackSystem _inputCallbacks = new InputCallbackSystem();
@@ -329,7 +263,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 
 			if (controller.IsPressed("Power"))
 			{
-				LibGambatte.gambatte_reset(GambatteState, GetCurrentTime());
+				LibGambatte.gambatte_reset(GambatteState);
 			}
 
 			if (Tracer.Enabled)
@@ -440,12 +374,13 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 
 		#region ppudebug
 
+		public IntPtr _vram = IntPtr.Zero;
+		public IntPtr _bgpal = IntPtr.Zero;
+		public IntPtr _sppal = IntPtr.Zero;
+		public IntPtr _oam = IntPtr.Zero;
+
 		public GPUMemoryAreas GetGPU()
-		{
-			IntPtr _vram = IntPtr.Zero;
-			IntPtr _bgpal = IntPtr.Zero;
-			IntPtr _sppal = IntPtr.Zero;
-			IntPtr _oam = IntPtr.Zero;
+		{		
 			int unused = 0;
 			if (!LibGambatte.gambatte_getmemoryarea(GambatteState, LibGambatte.MemoryAreas.vram, ref _vram, ref unused)
 				|| !LibGambatte.gambatte_getmemoryarea(GambatteState, LibGambatte.MemoryAreas.bgpal, ref _bgpal, ref unused)
@@ -455,7 +390,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 				throw new InvalidOperationException("Unexpected error in gambatte_getmemoryarea");
 			}
 			return new GPUMemoryAreas(_vram, _oam, _sppal, _bgpal);
-
 		}
 
 		/// <summary>

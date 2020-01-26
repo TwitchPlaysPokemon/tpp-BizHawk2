@@ -25,6 +25,7 @@ namespace BizHawk.Client.Common
 		{
 		}
 
+		/// <exception cref="Exception"><paramref name="file"/> does not exist</exception>
 		public RomGame(HawkFile file, string patch)
 		{
 			if (!file.Exists)
@@ -64,6 +65,14 @@ namespace BizHawk.Client.Common
 			// but this whole architecture is not going to withstand every peculiarity and be fast as well.
 			if (headerOffset == 0)
 			{
+				RomData = FileData;
+			}
+			else if (file.Extension == ".DSK" || file.Extension == ".TAP" || file.Extension == ".TZX" || 
+				file.Extension == ".PZX" || file.Extension == ".CSW" || file.Extension == ".WAV" || file.Extension == ".CDT")
+			{
+				// these are not roms. unforunately if treated as such there are certain edge-cases
+				// where a header offset is detected. This should mitigate this issue until a cleaner solution is found 
+				// (-Asnivor)
 				RomData = FileData;
 			}
 			else

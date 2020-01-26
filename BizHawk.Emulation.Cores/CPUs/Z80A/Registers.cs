@@ -6,7 +6,6 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 	public partial class Z80A
 	{
 		// registers
-		// note these are not constants. When shadows are used, they will be changed accordingly
 		public ushort PCl = 0;
 		public ushort PCh = 1;
 		public ushort SPl = 2;
@@ -40,62 +39,80 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 		public ushort E_s = 29;
 		public ushort H_s = 30;
 		public ushort L_s = 31;
+		public ushort DB = 32;
+		public ushort scratch = 33;
+		public ushort IRQ_V = 34; // IRQ mode 1 vector
+		public ushort NMI_V = 35; // NMI vector
 
 		public ushort[] Regs = new ushort[36];
 
+		// IO Contention Constants. Need to distinguish port access and normal memory accesses for zx spectrum
+		public const ushort BIO1 = 100;
+		public const ushort BIO2 = 101;
+		public const ushort BIO3 = 102;
+		public const ushort BIO4 = 103;
+
+		public const ushort WIO1 = 105;
+		public const ushort WIO2 = 106;
+		public const ushort WIO3 = 107;
+		public const ushort WIO4 = 108;
+
+
 		public bool FlagI;
+
+		public bool FlagW; // wait flag, when set to true reads / writes will be delayed
 
 		public bool FlagC
 		{
-			get { return (Regs[5] & 0x01) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x01) | (value ? 0x01 : 0x00)); }
+			get => (Regs[5] & 0x01) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x01) | (value ? 0x01 : 0x00));
 		}
 
 		public bool FlagN
 		{
-			get { return (Regs[5] & 0x02) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x02) | (value ? 0x02 : 0x00)); }
+			get => (Regs[5] & 0x02) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x02) | (value ? 0x02 : 0x00));
 		}
 
 		public bool FlagP
 		{
-			get { return (Regs[5] & 0x04) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x04) | (value ? 0x04 : 0x00)); }
+			get => (Regs[5] & 0x04) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x04) | (value ? 0x04 : 0x00));
 		}
 
 		public bool Flag3
 		{
-			get { return (Regs[5] & 0x08) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x08) | (value ? 0x08 : 0x00)); }
+			get => (Regs[5] & 0x08) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x08) | (value ? 0x08 : 0x00));
 		}
 
 		public bool FlagH
 		{
-			get { return (Regs[5] & 0x10) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x10) | (value ? 0x10 : 0x00)); }
+			get => (Regs[5] & 0x10) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x10) | (value ? 0x10 : 0x00));
 		}
 
 		public bool Flag5
 		{
-			get { return (Regs[5] & 0x20) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x20) | (value ? 0x20 : 0x00)); }
+			get => (Regs[5] & 0x20) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x20) | (value ? 0x20 : 0x00));
 		}
 
 		public bool FlagZ
 		{
-			get { return (Regs[5] & 0x40) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x40) | (value ? 0x40 : 0x00)); }
+			get => (Regs[5] & 0x40) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x40) | (value ? 0x40 : 0x00));
 		}
 
 		public bool FlagS
 		{
-			get { return (Regs[5] & 0x80) != 0; }
-			set { Regs[5] = (ushort)((Regs[5] & ~0x80) | (value ? 0x80 : 0x00)); }
+			get => (Regs[5] & 0x80) != 0;
+			set => Regs[5] = (ushort)((Regs[5] & ~0x80) | (value ? 0x80 : 0x00));
 		}
 
 		public ushort RegPC
 		{
-			get { return (ushort)(Regs[0] | (Regs[1] << 8)); }
+			get => (ushort)(Regs[0] | (Regs[1] << 8));
 			set
 			{
 				Regs[0] = (ushort)(value & 0xFF);
@@ -109,6 +126,14 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 			{
 				Regs[i] = 0;
 			}
+
+			// the IRQ1 vector is 0x38
+			Regs[IRQ_V] = 0x38;
+			// The NMI vector is constant 0x66
+			Regs[NMI_V] = 0x66;
+
+			FlagI = false;
+			FlagW = false;
 		}
 
 		private bool[] TableParity;
@@ -125,8 +150,5 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 				TableParity[i] = (Bits & 1) == 0;
 			}
 		}
-
-
-
 	}
 }

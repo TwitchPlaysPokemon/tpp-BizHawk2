@@ -36,10 +36,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		public override void SyncState(BizHawk.Common.Serializer ser)
 		{
 			base.SyncState(ser);
-			ser.Sync("exmode", ref exmode);
-			ser.Sync("exprg", ref exprg, false);
-			ser.Sync("exchr", ref exchr, false);
-			ser.Sync("exnmt", ref exnmt);
+			ser.Sync(nameof(exmode), ref exmode);
+			ser.Sync(nameof(exprg), ref exprg, false);
+			ser.Sync(nameof(exchr), ref exchr, false);
+			ser.Sync(nameof(exnmt), ref exnmt);
 		}
 
 		public override byte ReadPRG(int addr)
@@ -65,7 +65,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				SetMirrorType(!exnmt.Bit(0) ? EMirrorType.Vertical : EMirrorType.Horizontal);
 		}
 
-		readonly static byte[] modes = { 5, 5, 3, 1 };
+		static readonly byte[] modes = { 5, 5, 3, 1 };
 		public override byte ReadPPU(int addr)
 		{
 			if (addr < 0x2000)

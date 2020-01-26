@@ -63,9 +63,10 @@ namespace BizHawk.Client.EmuHawk
 			ResetBuffer();
 		}
 
+		/// <exception cref="InvalidOperationException">(from setter) constructed in standalone mode</exception>
 		public int MaxSamplesDeficit
 		{
-			get { return _maxSamplesDeficit; }
+			get => _maxSamplesDeficit;
 			set
 			{
 				if (_standaloneMode) throw new InvalidOperationException();
@@ -124,6 +125,7 @@ namespace BizHawk.Client.EmuHawk
 			get { return SampleRate / Global.Emulator.VsyncRate(); }
 		}
 
+		/// <exception cref="InvalidOperationException">not constructed in standalone mode</exception>
 		public void GetSamples(short[] samples)
 		{
 			if (!_standaloneMode) throw new InvalidOperationException();
@@ -132,6 +134,7 @@ namespace BizHawk.Client.EmuHawk
 			GetSamplesFromBuffer(samples, returnSampleCount);
 		}
 
+		/// <exception cref="InvalidOperationException">constructed in standalone mode</exception>
 		public void GetSamples(int idealSampleCount, out short[] samples, out int sampleCount)
 		{
 			if (_standaloneMode) throw new InvalidOperationException();
@@ -167,7 +170,7 @@ namespace BizHawk.Client.EmuHawk
 			if (extraSampleCount < -maxSamplesDeficit)
 			{
 				int generateSampleCount = -extraSampleCount;
-				if (LogDebug) Console.WriteLine("Generating " + generateSampleCount + " samples");
+				if (LogDebug) Console.WriteLine($"Generating {generateSampleCount} samples");
 				for (int i = 0; i < generateSampleCount * ChannelCount; i++)
 				{
 					_buffer.Enqueue(0);
@@ -177,7 +180,7 @@ namespace BizHawk.Client.EmuHawk
 			else if (extraSampleCount > maxSamplesSurplus)
 			{
 				int discardSampleCount = extraSampleCount;
-				if (LogDebug) Console.WriteLine("Discarding " + discardSampleCount + " samples");
+				if (LogDebug) Console.WriteLine($"Discarding {discardSampleCount} samples");
 				for (int i = 0; i < discardSampleCount * ChannelCount; i++)
 				{
 					_buffer.Dequeue();

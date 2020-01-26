@@ -40,10 +40,8 @@ namespace BizHawk.Emulation.DiscSystem
 			BaseStream = null;
 		}
 
-		private static string ReadTag(BinaryReader br)
-		{
-			return "" + br.ReadChar() + br.ReadChar() + br.ReadChar() + br.ReadChar();
-		}
+		private static string ReadTag(BinaryReader br) =>
+			string.Concat(br.ReadChar(), br.ReadChar(), br.ReadChar(), br.ReadChar());
 
 		protected static void WriteTag(BinaryWriter bw, string tag)
 		{
@@ -236,6 +234,8 @@ namespace BizHawk.Emulation.DiscSystem
 		{
 			public Dictionary<string, string> dictionary = new Dictionary<string, string>();
 			public RiffContainer_INFO() { type = "INFO"; }
+
+			/// <exception cref="FormatException"><paramref name="rc"/>.<see cref="RiffContainer.subchunks"/> contains a chunk that does not inherit <see cref="RiffSubchunk"/></exception>
 			public RiffContainer_INFO(RiffContainer rc)
 			{
 				subchunks = rc.subchunks;
@@ -329,9 +329,8 @@ namespace BizHawk.Emulation.DiscSystem
 			riff.WriteStream(s);
 		}
 
-		/// <summary>
-		/// takes posession of the supplied stream
-		/// </summary>
+		/// <summary>takes posession of the supplied stream</summary>
+		/// <exception cref="FormatException"><paramref name="s"/> does not contain a riff chunk</exception>
 		public void LoadStream(Stream s)
 		{
 			Dispose();

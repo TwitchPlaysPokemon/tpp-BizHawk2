@@ -56,7 +56,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			void ApplyCustomAudio(short[] samples);
 
 			Dictionary<string, string> InitialRegisterValues { get; set; }
-		};
+		}
 
 		[INESBoardImpl]
 		public abstract class NESBoardBase : INESBoard
@@ -82,7 +82,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			}
 
 			Dictionary<string, string> _initialRegisterValues = new Dictionary<string, string>();
-			public Dictionary<string, string> InitialRegisterValues { get { return _initialRegisterValues; } set { _initialRegisterValues = value; } }
+			public Dictionary<string, string> InitialRegisterValues
+			{
+				get => _initialRegisterValues;
+				set => _initialRegisterValues = value;
+			}
 
 			public abstract bool Configure(NES.EDetectionOrigin origin);
 			public virtual void ClockPPU() { }
@@ -97,10 +101,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 			public virtual void SyncState(Serializer ser)
 			{
-				ser.Sync("vram", ref vram, true);
-				ser.Sync("wram", ref wram, true);
+				ser.Sync(nameof(vram), ref vram, true);
+				ser.Sync(nameof(wram), ref wram, true);
 				for (int i = 0; i < 4; i++) ser.Sync("mirroring" + i, ref mirroring[i]);
-				ser.Sync("irq_signal", ref irq_signal);
+				ser.Sync(nameof(irq_signal), ref irq_signal);
 				SyncStateFlag = true;
 			}
 
@@ -110,7 +114,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			}
 
 			private bool irq_signal;
-			public bool IRQSignal { get { return irq_signal; } set { irq_signal = value; } }
+			public bool IRQSignal
+			{
+				get => irq_signal;
+				set => irq_signal = value;
+			}
 
 			public virtual void Dispose() { }
 
@@ -295,8 +303,16 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				}
 			}
 
-			public byte[] WRAM { get { return wram; } set { wram = value; } }
-			public byte[] VRAM { get { return vram; } set { vram = value; } }
+			public byte[] WRAM
+			{
+				get => wram;
+				set => wram = value;
+			}
+			public byte[] VRAM
+			{
+				get => vram;
+				set => vram = value;
+			}
 			public byte[] ROM { get; set; }
 			public byte[] VROM { get; set; }
 			byte[] wram, vram;
@@ -459,10 +475,15 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			public string palette; // Palette override for VS system
 			public byte vs_security; // for VS system games that do a ppu dheck
 
-			public override string ToString()
-			{
-				return string.Format("pr={1},ch={2},wr={3},vr={4},ba={5},pa={6}|{7},brd={8},sys={9}", board_type, prg_size, chr_size, wram_size, vram_size, wram_battery ? 1 : 0, pad_h, pad_v, board_type, system);
-			}
+			public override string ToString() => string.Join(",",
+				$"pr={prg_size}",
+				$"ch={chr_size}",
+				$"wr={wram_size}",
+				$"vr={vram_size}",
+				$"ba={(wram_battery ? 1 : 0)}",
+				$"pa={pad_h}|{pad_v}",
+				$"brd={board_type}",
+				$"sys={system}");
 		}
 
 		/// <summary>
@@ -490,7 +511,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 						{
 #if DEBUG
 							if (ret != null)
-								throw new Exception(string.Format("Boards {0} and {1} both responded to Configure!", ret, type));
+								throw new Exception($"Boards {ret} and {type} both responded to {nameof(NESBoardBase.Configure)}!");
 							else
 								ret = type;
 #else
@@ -717,13 +738,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 			public List<CartInfo> Identify(string sha1)
 			{
-				lock (syncroot)
-				{
-					if (!sha1_table.ContainsKey(sha1))
-						return new List<CartInfo>();
-					else
-						return sha1_table[sha1];
-				}
+				lock (syncroot) return sha1_table[sha1];
 			}
 		}
 	}

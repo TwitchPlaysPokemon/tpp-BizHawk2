@@ -17,7 +17,6 @@ namespace BizHawk.Client.Common
 			Serializer = new JsonSerializer
 			{
 				MissingMemberHandling = MissingMemberHandling.Ignore,
-				MissingTypeHandling = MissingTypeHandling.Ignore,
 				TypeNameHandling = TypeNameHandling.Auto,
 				ConstructorHandling = ConstructorHandling.Default,
 
@@ -31,6 +30,7 @@ namespace BizHawk.Client.Common
 			};
 		}
 
+		/// <exception cref="InvalidOperationException">internal error</exception>
 		public static T Load<T>(string filepath) where T : new()
 		{
 			T config = default(T);

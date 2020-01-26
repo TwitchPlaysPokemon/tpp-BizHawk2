@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using BizHawk.Client.ApiHawk;
 
 namespace BizHawk.Client.Common
 {
@@ -14,7 +13,7 @@ namespace BizHawk.Client.Common
 		private const JoypadButton UpDownLeftRight = JoypadButton.Up | JoypadButton.Down | JoypadButton.Left | JoypadButton.Right;
 		private const JoypadButton StandardButtons = JoypadButton.A | JoypadButton.B | JoypadButton.Start | JoypadButton.Select | UpDownLeftRight;
 
-		private static readonly List<SystemInfo> _allSystemInfos = new List<SystemInfo>();
+		private static readonly List<SystemInfo> AllSystemInfos = new List<SystemInfo>();
 
 		#endregion
 
@@ -34,7 +33,7 @@ namespace BizHawk.Client.Common
 			MaxControllers = maxControllers;
 			AvailableButtons = availableButtons;
 
-			_allSystemInfos.Add(this);
+			AllSystemInfos.Add(this);
 		}
 
 		#endregion
@@ -72,6 +71,16 @@ namespace BizHawk.Client.Common
 		/// Gets the <see cref="SystemInfo"/> instance for Coleco Vision
 		/// </summary>
 		public static SystemInfo Coleco { get; } = new SystemInfo("ColecoVision", CoreSystem.ColecoVision, 1);
+
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for Triple Gameboy
+		/// </summary>
+		public static SystemInfo GB3x { get; } = new SystemInfo("Game Boy Link 3x", CoreSystem.GB3x, 3, StandardButtons);
+
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for Quad Gameboy
+		/// </summary>
+		public static SystemInfo GB4x { get; } = new SystemInfo("Game Boy Link 4x", CoreSystem.GB4x, 4, StandardButtons);
 
 		/// <summary>
 		/// Gets the <see cref="SystemInfo"/> instance for Dual Gameboy
@@ -174,7 +183,7 @@ namespace BizHawk.Client.Common
 		public static SystemInfo TI83 { get; } = new SystemInfo("TI - 83", CoreSystem.TI83, 1);
 
 		/// <summary>
-		/// Gets the <see cref="SystemInfo"/> instance for Wonderswan
+		/// Gets the <see cref="SystemInfo"/> instance for WonderSwan
 		/// </summary>
 		public static SystemInfo WonderSwan { get; } = new SystemInfo("WonderSwan", CoreSystem.WonderSwan, 1);
 
@@ -184,9 +193,48 @@ namespace BizHawk.Client.Common
 		public static SystemInfo VirtualBoy { get; } = new SystemInfo("Virtual Boy", CoreSystem.VirtualBoy, 1);
 
 		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for Vectrex
+		/// </summary>
+		public static SystemInfo Vectrex { get; } = new SystemInfo("Vectrex", CoreSystem.Vectrex, 2);
+
+		/// <summary>
 		/// Gets the <see cref="SystemInfo"/> instance for TI-83
 		/// </summary>
 		public static SystemInfo NeoGeoPocket { get; } = new SystemInfo("Neo-Geo Pocket", CoreSystem.NeoGeoPocket, 1);
+
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for ZXSpectrum
+		/// </summary>
+		public static SystemInfo ZxSpectrum { get; } = new SystemInfo("ZX Spectrum", CoreSystem.ZXSpectrum, 2);
+
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for AmstradCPC
+		/// </summary>
+		public static SystemInfo AmstradCpc { get; } = new SystemInfo("Amstrad CPC", CoreSystem.AmstradCPC, 2);
+
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for GGL
+		/// </summary>
+		public static SystemInfo GGL { get; } = new SystemInfo("Game Gear Linked", CoreSystem.GGL, 2);
+
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for ChannelF
+		/// </summary>
+		/// 
+		public static SystemInfo ChannelF { get; } = new SystemInfo("Channel F", CoreSystem.ChannelF, 2);
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for Odyssey2
+		/// </summary>
+		/// 
+		public static SystemInfo O2 { get; } = new SystemInfo("Odyssey2", CoreSystem.Odyssey2, 2);
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for MAME
+		/// </summary>
+		public static SystemInfo Mame { get; } = new SystemInfo("MAME", CoreSystem.MAME, 4);
+		/// <summary>
+		/// Gets the <see cref="SystemInfo"/> instance for MSX
+		/// </summary>
+		public static SystemInfo MSX { get; } = new SystemInfo("MSX", CoreSystem.MSX, 2);
 
 		#endregion Get SystemInfo
 
@@ -197,7 +245,7 @@ namespace BizHawk.Client.Common
 		/// <returns><see cref="SystemInfo"/></returns>
 		public static SystemInfo FindByCoreSystem(CoreSystem system)
 		{
-			return _allSystemInfos.Find(s => s.System == system);
+			return AllSystemInfos.Find(s => s.System == system);
 		}
 
 		/// <summary>
@@ -207,16 +255,16 @@ namespace BizHawk.Client.Common
 		/// <returns>True if object is equal to this instance; otherwise, false</returns>
 		public override bool Equals(object obj)
 		{
-			if (obj is SystemInfo)
+			if (obj is SystemInfo info)
 			{
-				return this == (SystemInfo)obj;
+				return this == info;
 			}
 
 			return base.Equals(obj);
 		}
 
 		/// <summary>
-		/// Gets the haschode for current instance
+		/// Gets the hashcode for current instance
 		/// </summary>
 		/// <returns>This instance hashcode</returns>
 		public override int GetHashCode()

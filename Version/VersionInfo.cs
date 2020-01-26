@@ -1,9 +1,12 @@
+#nullable disable
+
 using System.IO;
 
 internal static class VersionInfo
 {
-	public const string Mainversion = "2.0.0"; // Use numbers only or the new version notification won't work
-	public static readonly string RELEASEDATE = "June 25, 2017";
+	// keep this updated at every major release
+	public const string Mainversion = "2.4.0"; // Use numbers only or the new version notification won't work
+	public static readonly string RELEASEDATE = "January 18, 2020";
 	public static readonly bool DeveloperBuild = true;
 	public static readonly string HomePage = "http://tasvideos.org/BizHawk.html";
 
@@ -28,7 +31,7 @@ internal static class VersionInfo
 		}
 	}
 
-	// code copied to avoid depending on code in otherp rojects
+	// code copied to avoid depending on code in other projects
 	private static string GetExeDirectoryAbsolute()
 	{
 		var path = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);

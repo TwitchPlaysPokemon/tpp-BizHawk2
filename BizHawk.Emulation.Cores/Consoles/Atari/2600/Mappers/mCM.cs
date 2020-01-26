@@ -1,4 +1,6 @@
-﻿using BizHawk.Common;
+﻿using System;
+
+using BizHawk.Common;
 using BizHawk.Common.NumberExtensions;
 
 namespace BizHawk.Emulation.Cores.Atari.Atari2600
@@ -275,7 +277,7 @@ namespace BizHawk.Emulation.Cores.Atari.Atari2600
 			}
 
 			// Attempting to read while in write mode
-			throw new NotTestedException();
+			throw new Exception("this hasn't been tested");
 		}
 
 		public override byte ReadMemory(ushort addr)

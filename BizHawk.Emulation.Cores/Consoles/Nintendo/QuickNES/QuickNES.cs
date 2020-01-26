@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 
+using BizHawk.Common;
 using BizHawk.Emulation.Common;
-using BizHawk.Common.BizInvoke;
+using BizHawk.BizInvoke;
 
 namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 {
@@ -21,22 +23,27 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 	{
 		static QuickNES()
 		{
-			Resolver = new DynamicLibraryImportResolver(LibQuickNES.dllname);
+			Resolver = new DynamicLibraryImportResolver($"libquicknes{(OSTailoredCode.IsUnixHost ? ".dll.so.0.7.0" : ".dll")}");
 			QN = BizInvoker.GetInvoker<LibQuickNES>(Resolver, CallingConventionAdapters.Native);
+			QN.qn_setup_mappers();
 		}
 
 		[CoreConstructor("NES")]
 		public QuickNES(CoreComm comm, byte[] file, object settings, object syncSettings)
 		{
+			FP = OSTailoredCode.IsUnixHost
+				? (IFPCtrl) new Unix_FPCtrl()
+				: new Win32_FPCtrl();
+
 			using (FP.Save())
 			{
 				ServiceProvider = new BasicServiceProvider(this);
 				CoreComm = comm;
-				
+
 				Context = QN.qn_new();
 				if (Context == IntPtr.Zero)
 				{
-					throw new InvalidOperationException("qn_new() returned NULL");
+					throw new InvalidOperationException($"{nameof(QN.qn_new)}() returned NULL");
 				}
 
 				try
@@ -79,32 +86,39 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 
 		#region FPU precision
 
-		private class FPCtrl : IDisposable
+		private interface IFPCtrl : IDisposable
 		{
-			[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
-			public static extern uint _control87(uint @new, uint mask);
+			IDisposable Save();
+		}
 
-			public static void PrintCurrentFP()
-			{
-				uint curr = _control87(0, 0);
-				Console.WriteLine("Current FP word: 0x{0:x8}", curr);
-			}
+		private class Win32_FPCtrl : IFPCtrl
+		{
+			[Conditional("DEBUG")]
+			public static void PrintCurrentFP() => Console.WriteLine($"Current FP word: 0x{Win32Imports._control87(0, 0):X8}");
 
-			uint cw;
+			private uint cw;
 
 			public IDisposable Save()
 			{
-				cw = _control87(0, 0);
-				_control87(0x00000, 0x30000);
+				cw = Win32Imports._control87(0, 0);
+				Win32Imports._control87(0x00000, 0x30000);
 				return this;
 			}
+
 			public void Dispose()
 			{
-				_control87(cw, 0x30000);
+				Win32Imports._control87(cw, 0x30000);
 			}
 		}
 
-		FPCtrl FP = new FPCtrl();
+		private class Unix_FPCtrl : IFPCtrl
+		{
+			public IDisposable Save() => this;
+
+			public void Dispose() {}
+		}
+
+		IFPCtrl FP;
 
 		#endregion
 
@@ -137,7 +151,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 
 		private static PadEnt[] GetPadList(int player)
 		{
-			string prefix = string.Format("P{0} ", player);
+			string prefix = $"P{player} ";
 			return PadNames.Zip(PadMasks, (s, i) => new PadEnt(prefix + s, i)).ToArray();
 		}
 
@@ -178,7 +192,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 
 		#endregion
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound = true)
+		public bool FrameAdvance(IController controller, bool render, bool rendersound = true)
 		{
 			CheckDisposed();
 			using (FP.Save())
@@ -192,7 +206,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 				SetPads(controller, out j1, out j2);
 
 				if (Tracer.Enabled)
-					QN.qn_set_tracecb(Context, _tracecb);
+					QN.qn_set_tracecb(Context, _traceCb);
 				else
 					QN.qn_set_tracecb(Context, null);
 
@@ -207,8 +221,10 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 				if (rendersound)
 					DrainAudio();
 
-				if (CB1 != null) CB1();
-				if (CB2 != null) CB2();
+				if (_callBack1 != null) _callBack1();
+				if (_callBack2 != null) _callBack2();
+
+				return true;
 			}
 		}
 
@@ -427,6 +443,8 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES
 			"ED8ACE4BDA8DAA9832E12D59911A942B8C105A46", // Jajamaru Ninpou Chou (J) [hM04]
 			"123045D5E8CF038C2FD396BD266EEF96DAFF9BCD", // Jikuu Yuuden - Debias (J) [o1]
 			"123045D5E8CF038C2FD396BD266EEF96DAFF9BCD", // Jikuu Yuuden - Debias (J) [!]
+			"76DB18B90FB2B76FA685D6462846ED3A92F5CBD4", // Joe and Mac (U) [!] 
+			"7E1C9F23BF9BECB7831459598339A4DC9A3CECFC", // Joe and Mac (E) [!]
 			"A654DE12A59D07BAFF30DD6CB5E1AD05EB20B2D7", // Jumpy Demo by Rwin (PD)
 			"DE42818873470458DF29F515A193F536A0642EA8", // Kamikaze Mario DX Plus V1
 			"BFECB191CFD480B14B7169441DB3D389A4B634D2", // Kamikaze Mario DX Plus V1

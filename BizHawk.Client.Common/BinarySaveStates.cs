@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace BizHawk.Client.Common
@@ -12,6 +11,8 @@ namespace BizHawk.Client.Common
 	{
 		[Name("BizState 1", "0")]
 		public static BinaryStateLump Versiontag { get; private set; }
+		[Name("BizVersion", "txt")]
+		public static BinaryStateLump BizVersion { get; private set; }
 		[Name("Core", "bin")]
 		public static BinaryStateLump Corestate { get; private set; }
 		[Name("Framebuffer", "bmp")]
@@ -23,7 +24,7 @@ namespace BizHawk.Client.Common
 		[Name("MovieSaveRam", "bin")]
 		public static BinaryStateLump MovieSaveRam { get; private set; }
 
-		// Only for movies they probably shoudln't be leaching this stuff
+		// Only for movies they probably shouldn't be leaching this stuff
 		[Name("Header", "txt")]
 		public static BinaryStateLump Movieheader { get; private set; }
 		[Name("Comments", "txt")]
@@ -51,23 +52,21 @@ namespace BizHawk.Client.Common
 		[Name("Session", "txt")]
 		public static BinaryStateLump Session { get; private set; }
 
-		// branchstuff
+		// branch stuff
 		[Name("Branches\\CoreData", "bin")]
 		public static BinaryStateLump BranchCoreData { get; private set; }
 		[Name("Branches\\InputLog", "txt")]
 		public static BinaryStateLump BranchInputLog { get; private set; }
 		[Name("Branches\\FrameBuffer", "bmp")]
 		public static BinaryStateLump BranchFrameBuffer { get; private set; }
-		[Name("Branches\\LagLog", "bin")]
-		public static BinaryStateLump BranchLagLog { get; private set; }
+		[Name("Branches\\CoreFrameBuffer", "bmp")]
+		public static BinaryStateLump BranchCoreFrameBuffer { get; private set; }
 		[Name("Branches\\Header", "json")]
 		public static BinaryStateLump BranchHeader { get; private set; }
 		[Name("Branches\\Markers", "txt")]
 		public static BinaryStateLump BranchMarkers { get; private set; }
 		[Name("Branches\\UserText", "txt")]
 		public static BinaryStateLump BranchUserText { get; private set; }
-		[Name("Branches\\GreenZone")]
-		public static BinaryStateLump BranchStateHistory { get; private set; }
 
 		[AttributeUsage(AttributeTargets.Property)]
 		private class NameAttribute : Attribute
@@ -147,7 +146,7 @@ namespace BizHawk.Client.Common
 		private ZipFile _zip;
 		private Version _ver;
 		private bool _isDisposed;
-		private Dictionary<string, ZipEntry> _entriesbyname;
+		private Dictionary<string, ZipEntry> _entriesByName;
 
 		private BinaryStateLoader()
 		{
@@ -189,7 +188,7 @@ namespace BizHawk.Client.Common
 
 		private void PopulateEntries()
 		{
-			_entriesbyname = new Dictionary<string, ZipEntry>();
+			_entriesByName = new Dictionary<string, ZipEntry>();
 			foreach (ZipEntry z in _zip)
 			{
 				string name = z.Name;
@@ -199,7 +198,7 @@ namespace BizHawk.Client.Common
 					name = name.Substring(0, i);
 				}
 
-				_entriesbyname.Add(name.Replace('/', '\\'), z);
+				_entriesByName.Add(name.Replace('/', '\\'), z);
 			}
 		}
 
@@ -236,17 +235,15 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		/// <summary>
-		/// Gets a lump
-		/// </summary>
-		/// <param name="lump">lump to retriever</param>
-		/// <param name="abort">true to throw exception on failure</param>
+		/// <param name="lump">lump to retrieve</param>
+		/// <param name="abort">pass true to throw exception instead of returning false</param>
 		/// <param name="callback">function to call with the desired stream</param>
-		/// <returns>true if callback was called and stream was loaded</returns>
+		/// <returns>true iff stream was loaded</returns>
+		/// <exception cref="Exception">stream not found and <paramref name="abort"/> is <see langword="true"/></exception>
 		public bool GetLump(BinaryStateLump lump, bool abort, Action<Stream, long> callback)
 		{
 			ZipEntry e;
-			if (_entriesbyname.TryGetValue(lump.ReadName, out e))
+			if (_entriesByName.TryGetValue(lump.ReadName, out e))
 			{
 				using (var zs = _zip.GetInputStream(e))
 				{
@@ -258,7 +255,7 @@ namespace BizHawk.Client.Common
 			
 			if (abort)
 			{
-				throw new Exception("Essential zip section not found: " + lump.ReadName);
+				throw new Exception($"Essential zip section not found: {lump.ReadName}");
 			}
 			
 			return false;
@@ -291,6 +288,7 @@ namespace BizHawk.Client.Common
 			});
 		}
 
+		/// <exception cref="Exception">couldn't find Binary or Text savestate</exception>
 		public void GetCoreState(Action<BinaryReader, long> callbackBinary, Action<TextReader> callbackText)
 		{
 			if (!GetLump(BinaryStateLump.Corestate, false, callbackBinary)
@@ -300,6 +298,7 @@ namespace BizHawk.Client.Common
 			}
 		}
 
+		/// <exception cref="Exception">couldn't find Binary or Text savestate</exception>
 		public void GetCoreState(Action<BinaryReader> callbackBinary, Action<TextReader> callbackText)
 		{
 			if (!GetLump(BinaryStateLump.Corestate, false, callbackBinary)
@@ -322,16 +321,21 @@ namespace BizHawk.Client.Common
 			sw.Flush();
 		}
 
+		private static void WriteEmuVersion(Stream s)
+		{
+			var sw = new StreamWriter(s);
+			sw.WriteLine(VersionInfo.GetEmuVersion());
+			sw.Flush();
+		}
+
 		public BinaryStateSaver(string path, bool notamovie = true) // notamovie is hack, really should have separate something
 		{
-			////_zip = new IonicZipWriter(path, notamovie ? Global.Config.SaveStateCompressionLevelNormal : Global.Config.MovieCompressionLevel);
-			////_zip = new SharpZipWriter(path, Global.Config.SaveStateCompressionLevelNormal);
-			////_zip = new SevenZipWriter(path, Global.Config.SaveStateCompressionLevelNormal);
 			_zip = new FrameworkZipWriter(path, notamovie ? Global.Config.SaveStateCompressionLevelNormal : Global.Config.MovieCompressionLevel);
 
 			if (notamovie)
 			{
 				PutLump(BinaryStateLump.Versiontag, WriteVersion);
+				PutLump(BinaryStateLump.BizVersion, WriteEmuVersion);
 			}
 		}
 

@@ -7,10 +7,7 @@ namespace BizHawk.Emulation.Cores.Calculators
 {
 	public partial class TI83 : IStatable
 	{
-		public bool BinarySaveStatesPreferred
-		{
-			get { return true; }
-		}
+		public bool BinarySaveStatesPreferred => true;
 
 		public void SaveStateText(TextWriter writer)
 		{
@@ -34,8 +31,8 @@ namespace BizHawk.Emulation.Cores.Calculators
 
 		public byte[] SaveStateBinary()
 		{
-			MemoryStream ms = new MemoryStream();
-			BinaryWriter bw = new BinaryWriter(ms);
+			using var ms = new MemoryStream();
+			using var bw = new BinaryWriter(ms);
 			SaveStateBinary(bw);
 			bw.Flush();
 			return ms.ToArray();
@@ -43,16 +40,15 @@ namespace BizHawk.Emulation.Cores.Calculators
 
 		private void SyncState(Serializer ser)
 		{
-			byte[] core = null;
 			if (ser.IsWriter)
 			{
 				var ms = new MemoryStream();
 				ms.Close();
-				core = ms.ToArray();
+				ms.ToArray();
 			}
 			_cpu.SyncState(ser);
 
-			ser.BeginSection("TI83");
+			ser.BeginSection(nameof(TI83));
 			ser.Sync("RAM", ref _ram, false);
 			ser.Sync("romPageLow3Bits", ref _romPageLow3Bits);
 			ser.Sync("romPageHighBit", ref _romPageHighBit);
@@ -69,14 +65,14 @@ namespace BizHawk.Emulation.Cores.Calculators
 			ser.Sync("Frame", ref _frame);
 			ser.Sync("LagCount", ref _lagCount);
 			ser.Sync("IsLag", ref _isLag);
-			ser.Sync("ON_key_int", ref ON_key_int);
-			ser.Sync("ON_key_int_EN", ref ON_key_int_EN);
-			ser.Sync("TIM_1_int", ref TIM_1_int);
-			ser.Sync("TIM_1_int_EN", ref TIM_1_int_EN);
-			ser.Sync("TIM_frq", ref TIM_frq);
-			ser.Sync("TIM_mult", ref TIM_mult);
-			ser.Sync("TIM_count", ref TIM_count);
-			ser.Sync("TIM_hit", ref TIM_hit);
+			ser.Sync(nameof(ON_key_int), ref ON_key_int);
+			ser.Sync(nameof(ON_key_int_EN), ref ON_key_int_EN);
+			ser.Sync(nameof(TIM_1_int), ref TIM_1_int);
+			ser.Sync(nameof(TIM_1_int_EN), ref TIM_1_int_EN);
+			ser.Sync(nameof(TIM_frq), ref TIM_frq);
+			ser.Sync(nameof(TIM_mult), ref TIM_mult);
+			ser.Sync(nameof(TIM_count), ref TIM_count);
+			ser.Sync(nameof(TIM_hit), ref TIM_hit);
 
 			ser.EndSection();
 

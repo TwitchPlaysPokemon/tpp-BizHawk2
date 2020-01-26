@@ -64,11 +64,8 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		/// <summary>
-		/// Gets a value that represents the top left corner coordinate, if <see cref="Wndx"/> and <see cref="Wndy"/> form a valid point
-		/// Throws an InvalidOperationException if <see cref="Wndx"/> or <see cref="Wndy"/> is null
-		/// It is expected to check for this before using this property
-		/// </summary>
+		/// <value>the top-left corner of the <see cref="EmuHawk.IToolFormAutoConfig"/>, equivalent to the combined values of <see cref="Wndx"/> and <see cref="Wndy"/></value>
+		/// <exception cref="InvalidOperationException">either <see cref="Wndx"/> or <see cref="Wndy"/> is null (it is expected to check for this before using this property)</exception>
 		[JsonIgnore]
 		public Point TopLeft
 		{
@@ -79,7 +76,7 @@ namespace BizHawk.Client.Common
 					return new Point(_wndx.Value, _wndy.Value);
 				}
 
-				throw new InvalidOperationException("TopLeft can not be used when one of the coordinates is null");
+				throw new InvalidOperationException($"{nameof(TopLeft)} can not be used when one of the coordinates is null");
 			}
 		}
 

@@ -5,12 +5,12 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 
-using BizHawk.Emulation.Common;
 using BizHawk.Client.Common;
+using BizHawk.Emulation.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
-	public partial class ToolBox : Form, IToolForm
+	public partial class ToolBox : ToolFormBase, IToolForm
 	{
 		[RequiredService]
 		private IEmulator Emulator { get; set; }
@@ -30,8 +30,8 @@ namespace BizHawk.Client.EmuHawk
 
 		public void NewUpdate(ToolFormUpdateType type) { }
 
-		public bool AskSaveChanges() { return true;  }
-		public bool UpdateBefore { get { return false; } }
+		public bool AskSaveChanges() => true;
+		public bool UpdateBefore => false;
 		public void UpdateValues() { }
 
 		public void FastUpdate()
@@ -66,19 +66,21 @@ namespace BizHawk.Client.EmuHawk
 					continue;
 				if (!ServiceInjector.IsAvailable(Emulator.ServiceProvider, t))
 					continue;
+//				if (!ApiInjector.IsAvailable(, t))
+//					continue;
 
 				var instance = Activator.CreateInstance(t);
 
 				var tsb = new ToolStripButton
 				{
-					Image = (instance as Form).Icon.ToBitmap(),
-					Text = (instance as Form).Text,
-					DisplayStyle = (instance as Form).ShowIcon ? ToolStripItemDisplayStyle.Image : ToolStripItemDisplayStyle.Text
+					Image = ((Form) instance).Icon.ToBitmap(),
+					Text = ((Form) instance).Text,
+					DisplayStyle = ((Form) instance).ShowIcon ? ToolStripItemDisplayStyle.Image : ToolStripItemDisplayStyle.Text
 				};
 
 				tsb.Click += (o, e) =>
 				{
-					GlobalWin.Tools.Load(t);
+					Tools.Load(t);
 					Close();
 				};
 
@@ -93,13 +95,7 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		// Provide LINQ capabilities to an outdated form collection
-		private IEnumerable<ToolStripItem> ToolBoxItems
-		{
-			get
-			{
-				return ToolBoxStrip.Items.Cast<ToolStripItem>();
-			}
-		}
+		private IEnumerable<ToolStripItem> ToolBoxItems => ToolBoxStrip.Items.Cast<ToolStripItem>();
 
 		protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
 		{
@@ -108,10 +104,8 @@ namespace BizHawk.Client.EmuHawk
 				Close();
 				return true;
 			}
-			else
-			{
-				return base.ProcessCmdKey(ref msg, keyData);
-			}
+
+			return base.ProcessCmdKey(ref msg, keyData);
 		}
 	}
 }

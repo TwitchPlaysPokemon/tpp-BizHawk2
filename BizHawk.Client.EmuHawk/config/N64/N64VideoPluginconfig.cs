@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Windows.Forms;
 
 using BizHawk.Common.StringExtensions;
@@ -7,13 +6,20 @@ using BizHawk.Common.ReflectionExtensions;
 using BizHawk.Emulation.Cores.Nintendo.N64;
 using BizHawk.Client.Common;
 using BizHawk.Client.EmuHawk.WinFormExtensions;
+using BizHawk.Emulation.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
-	public partial class N64VideoPluginconfig : Form
+	public partial class N64VideoPluginConfig : Form
 	{
-		private N64Settings _s;
-		private N64SyncSettings _ss;
+		private readonly MainForm _mainForm;
+		private readonly Config _config;
+		private readonly GameInfo _game;
+		private readonly IEmulator _emulator;
+		private readonly N64Settings _s;
+		private readonly N64SyncSettings _ss;
+
+		private const string CustomResItemName = "Custom";
 
 		private static readonly string[] ValidResolutions =
 		{
@@ -30,61 +36,38 @@ namespace BizHawk.Client.EmuHawk
 			"1600 x 1200",
 			"1920 x 1440",
 			"2048 x 1536",
-			"Custom"
+			"2880 x 2160",
+			CustomResItemName
 		};
 
 		private bool _programmaticallyChangingPluginComboBox = false;
 
-		public N64VideoPluginconfig()
+		public N64VideoPluginConfig(
+			MainForm mainForm,
+			Config config,
+			GameInfo game,
+			IEmulator emulator)
 		{
+			_mainForm = mainForm;
+			_config = config;
+			_game = game;
+			_emulator = emulator;
+
+			// because mupen is a pile of garbage, this all needs to work even when N64 is not loaded
+			if (_emulator is N64 n64)
+			{
+				_s = n64.GetSettings();
+				_ss = n64.GetSyncSettings();
+			}
+			else
+			{
+				_s = (N64Settings)_config.GetCoreSettings<N64>()
+					?? new N64Settings();
+				_ss = (N64SyncSettings)_config.GetCoreSyncSettings<N64>()
+					?? new N64SyncSettings();
+			}
+
 			InitializeComponent();
-		}
-
-		// because mupen is a pile of garbage, this all needs to work even when N64 is not loaded
-		private static N64SyncSettings GetSyncSettings()
-		{
-			if (Global.Emulator is N64)
-			{
-				return ((N64)Global.Emulator).GetSyncSettings();
-			}
-
-			return (N64SyncSettings)Global.Config.GetCoreSyncSettings<N64>()
-				?? new N64SyncSettings();
-		}
-
-		private static N64Settings GetSettings()
-		{
-			if (Global.Emulator is N64)
-			{
-				return ((N64)Global.Emulator).GetSettings();
-			}
-
-			return (N64Settings)Global.Config.GetCoreSettings<N64>()
-				?? new N64Settings();
-		}
-
-		private static void PutSyncSettings(N64SyncSettings s)
-		{
-			if (Global.Emulator is N64)
-			{
-				GlobalWin.MainForm.PutCoreSyncSettings(s);
-			}
-			else
-			{
-				Global.Config.PutCoreSyncSettings<N64>(s);
-			}
-		}
-
-		private static void PutSettings(N64Settings s)
-		{
-			if (Global.Emulator is N64)
-			{
-				GlobalWin.MainForm.PutCoreSettings(s);
-			}
-			else
-			{
-				Global.Config.PutCoreSettings<N64>(s);
-			}
 		}
 
 		private void CancelBtn_Click(object sender, EventArgs e)
@@ -104,7 +87,7 @@ namespace BizHawk.Client.EmuHawk
 		private void SaveSettings()
 		{
 			// Global
-			if (VideoResolutionComboBox.Text != "Custom")
+			if (VideoResolutionComboBox.Text != CustomResItemName)
 			{
 				var videoSettings = VideoResolutionComboBox.SelectedItem.ToString();
 				var strArr = videoSettings.Split('x');
@@ -404,10 +387,14 @@ namespace BizHawk.Client.EmuHawk
 			_ss.GLideN64Plugin.bilinearMode = GLideN64_bilinearMode.SelectedItem
 				.ToString()
 				.GetEnumFromDescription<N64SyncSettings.N64GLideN64PluginSettings.bilinearFilteringMode>();
+			_ss.GLideN64Plugin.enableHalosRemoval = GLideN64_enableHalosRemoval.Checked;
 			_ss.GLideN64Plugin.MaxAnisotropy = GLideN64_MaxAnisotropy.Checked;
 			_ss.GLideN64Plugin.CacheSize = GLideN64_CacheSize.Text.IsSigned()
 				? int.Parse(GLideN64_CacheSize.Text)
 				: 500;
+			_ss.GLideN64Plugin.ShowInternalResolution = GLideN64_ShowInternalResolution.Checked;
+			_ss.GLideN64Plugin.ShowRenderingResolution = GLideN64_ShowRenderingResolution.Checked;
+			_ss.GLideN64Plugin.FXAA = GLideN64_FXAA.Checked;
 			_ss.GLideN64Plugin.EnableNoise = GLideN64_EnableNoise.Checked;
 			_ss.GLideN64Plugin.EnableLOD = GLideN64_EnableLOD.Checked;
 			_ss.GLideN64Plugin.EnableHWLighting = GLideN64_HWLighting.Checked;
@@ -453,6 +440,32 @@ namespace BizHawk.Client.EmuHawk
 				? float.Parse(GLideN64_GammaCorrectionLevel.Text)
 				: 2.0f;
 
+			_ss.GLideN64Plugin.EnableOverscan = GLideN64_EnableOverscan.Checked;
+			_ss.GLideN64Plugin.OverscanNtscTop = GLideN64_OverscanNtscTop.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanNtscTop.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanNtscBottom = GLideN64_OverscanNtscBottom.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanNtscBottom.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanNtscLeft = GLideN64_OverscanNtscLeft.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanNtscLeft.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanNtscRight = GLideN64_OverscanNtscRight.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanNtscRight.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanPalTop = GLideN64_OverscanPalTop.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanPalTop.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanPalBottom = GLideN64_OverscanPalBottom.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanPalBottom.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanPalLeft = GLideN64_OverscanPalLeft.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanPalLeft.Text)
+				: 0;
+			_ss.GLideN64Plugin.OverscanPalRight = GLideN64_OverscanPalRight.Text.IsSigned()
+				? int.Parse(GLideN64_OverscanPalRight.Text)
+				: 0;
+
 			_ss.GLideN64Plugin.EnableN64DepthCompare = GLideN64_EnableN64DepthCompare.Checked;
 			_ss.GLideN64Plugin.EnableCopyColorToRDRAM = GLideN64_EnableCopyColorToRDRAM.SelectedItem
 				.ToString()
@@ -471,15 +484,20 @@ namespace BizHawk.Client.EmuHawk
 				.ToString()
 				.GetEnumFromDescription<N64SyncSettings.RspType>();
 
-			PutSettings(_s);
-			PutSyncSettings(_ss);
+			if (_emulator is N64)
+			{
+				_mainForm.PutCoreSettings(_s);
+				_mainForm.PutCoreSyncSettings(_ss);
+			}
+			else
+			{
+				_config.PutCoreSettings<N64>(_s);
+				_config.PutCoreSyncSettings<N64>(_ss);
+			}
 		} 
 
-		private void N64VideoPluginconfig_Load(object sender, EventArgs e)
+		private void N64VideoPluginConfig_Load(object sender, EventArgs e)
 		{
-			_s = GetSettings();
-			_ss = GetSyncSettings();
-
 			CoreTypeDropdown.PopulateFromEnum<N64SyncSettings.CoreType>(_ss.Core);
 			RspTypeDropdown.PopulateFromEnum<N64SyncSettings.RspType>(_ss.Rsp);
 
@@ -502,18 +520,17 @@ namespace BizHawk.Client.EmuHawk
 			VideoResolutionXTextBox.Text = _s.VideoSizeX.ToString();
 			VideoResolutionYTextBox.Text = _s.VideoSizeY.ToString();
 
-			var videoSetting = _s.VideoSizeX
-						+ " x "
-						+ _s.VideoSizeY;
+			var videoSetting = $"{_s.VideoSizeX} x {_s.VideoSizeY}";
 
 			var index = VideoResolutionComboBox.Items.IndexOf(videoSetting);
 			if (index >= 0)
 			{
 				VideoResolutionComboBox.SelectedIndex = index;
 			}
-			else if (PluginComboBox.SelectedIndex != 4)
+			else if (PluginComboBox.SelectedIndex != 4) // wtf
 			{
-				VideoResolutionComboBox.SelectedIndex = 13;
+				VideoResolutionComboBox.SelectedIndex =
+					VideoResolutionComboBox.Items.IndexOf(CustomResItemName);
 				ShowCustomVideoResolutionControls();
 			}
 
@@ -574,7 +591,7 @@ namespace BizHawk.Client.EmuHawk
 			RiceColorQuality_Combo.SelectedIndex = _ss.RicePlugin.ColorQuality;
 			RiceOpenGLRenderSetting_Combo.SelectedIndex = _ss.RicePlugin.OpenGLRenderSetting;
 			RiceAnisotropicFiltering_TB.Value = _ss.RicePlugin.AnisotropicFiltering;
-			AnisotropicFiltering_LB.Text = "Anisotropic Filtering: " + RiceAnisotropicFiltering_TB.Value;
+			AnisotropicFiltering_LB.Text = $"Anisotropic Filtering: {RiceAnisotropicFiltering_TB.Value}";
 
 			RiceUseDefaultHacks_CB.Checked = _ss.RicePlugin.UseDefaultHacks;
 
@@ -746,8 +763,12 @@ namespace BizHawk.Client.EmuHawk
 			GLideN64_UseNativeResolutionFactor.Text = _ss.GLideN64Plugin.UseNativeResolutionFactor.ToString();
 			GLideN64_bilinearMode
 				.PopulateFromEnum<N64SyncSettings.N64GLideN64PluginSettings.bilinearFilteringMode>(_ss.GLideN64Plugin.bilinearMode);
+			GLideN64_enableHalosRemoval.Checked = _ss.GLideN64Plugin.enableHalosRemoval;
 			GLideN64_MaxAnisotropy.Checked = _ss.GLideN64Plugin.MaxAnisotropy;
 			GLideN64_CacheSize.Text = _ss.GLideN64Plugin.CacheSize.ToString();
+			GLideN64_ShowInternalResolution.Checked = _ss.GLideN64Plugin.ShowInternalResolution;
+			GLideN64_ShowRenderingResolution.Checked = _ss.GLideN64Plugin.ShowRenderingResolution;
+			GLideN64_FXAA.Checked = _ss.GLideN64Plugin.FXAA;
 			GLideN64_EnableNoise.Checked = _ss.GLideN64Plugin.EnableNoise;
 			GLideN64_EnableLOD.Checked = _ss.GLideN64Plugin.EnableLOD;
 			GLideN64_HWLighting.Checked = _ss.GLideN64Plugin.EnableHWLighting;
@@ -785,6 +806,25 @@ namespace BizHawk.Client.EmuHawk
 			GLideN64_ForceGammaCorrection.Checked = _ss.GLideN64Plugin.ForceGammaCorrection;
 			GLideN64_GammaCorrectionLevel.Text = _ss.GLideN64Plugin.GammaCorrectionLevel.ToString();
 
+			GLideN64_OverscanNtscTop.Enabled =
+			GLideN64_OverscanNtscBottom.Enabled =
+			GLideN64_OverscanNtscLeft.Enabled =
+			GLideN64_OverscanNtscRight.Enabled =
+			GLideN64_OverscanPalTop.Enabled =
+			GLideN64_OverscanPalBottom.Enabled =
+			GLideN64_OverscanPalLeft.Enabled =
+			GLideN64_OverscanPalRight.Enabled =
+			GLideN64_EnableOverscan.Checked =
+				_ss.GLideN64Plugin.EnableOverscan;
+			GLideN64_OverscanNtscTop.Text = _ss.GLideN64Plugin.OverscanNtscTop.ToString();
+			GLideN64_OverscanNtscBottom.Text = _ss.GLideN64Plugin.OverscanNtscBottom.ToString();
+			GLideN64_OverscanNtscLeft.Text = _ss.GLideN64Plugin.OverscanNtscLeft.ToString();
+			GLideN64_OverscanNtscRight.Text = _ss.GLideN64Plugin.OverscanNtscRight.ToString();
+			GLideN64_OverscanPalTop.Text = _ss.GLideN64Plugin.OverscanPalTop.ToString();
+			GLideN64_OverscanPalBottom.Text = _ss.GLideN64Plugin.OverscanPalBottom.ToString();
+			GLideN64_OverscanPalLeft.Text = _ss.GLideN64Plugin.OverscanPalLeft.ToString();
+			GLideN64_OverscanPalRight.Text = _ss.GLideN64Plugin.OverscanPalRight.ToString();
+
 			UpdateGLideN64HacksSection();
 			if (!_ss.GLideN64Plugin.UseDefaultHacks)
 			{
@@ -800,7 +840,7 @@ namespace BizHawk.Client.EmuHawk
 		
 		private void RiceAnisotropicFiltering_Tb_Scroll_1(object sender, EventArgs e)
 		{
-			AnisotropicFiltering_LB.Text = "Anisotropic Filtering: " + RiceAnisotropicFiltering_TB.Value;
+			AnisotropicFiltering_LB.Text = $"Anisotropic Filtering: {RiceAnisotropicFiltering_TB.Value}";
 		}
 
 		private void RiceUseDefaultHacks_Cb_CheckedChanged(object sender, EventArgs e)
@@ -812,43 +852,43 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (Glide64mk2_UseDefaultHacks1.Checked || Glide64mk2_UseDefaultHacks2.Checked)
 			{
-				Glide64mk2_use_sts1_only.Checked = Global.Game.GetBool("Glide64mk2_use_sts1_only", false);
-				Glide64mk2_optimize_texrect.Checked = Global.Game.GetBool("Glide64mk2_optimize_texrect", true);
-				Glide64mk2_increase_texrect_edge.Checked = Global.Game.GetBool("Glide64mk2_increase_texrect_edge", false);
-				Glide64mk2_ignore_aux_copy.Checked = Global.Game.GetBool("Glide64mk2_ignore_aux_copy", false);
-				Glide64mk2_hires_buf_clear.Checked = Global.Game.GetBool("Glide64mk2_hires_buf_clear", true);
-				Glide64mk2_force_microcheck.Checked = Global.Game.GetBool("Glide64mk2_force_microcheck", false);
-				Glide64mk2_fog.Checked = Global.Game.GetBool("Glide64mk2_fog", true);
-				Glide64mk2_fb_smart.Checked = Global.Game.GetBool("Glide64mk2_fb_smart", false);
-				Glide64mk2_fb_read_alpha.Checked = Global.Game.GetBool("Glide64mk2_fb_read_alpha", false);
-				Glide64mk2_fb_hires.Checked = Global.Game.GetBool("Glide64mk2_fb_hires", true);
-				Glide64mk2_detect_cpu_write.Checked = Global.Game.GetBool("Glide64mk2_detect_cpu_write", false);
-				Glide64mk2_decrease_fillrect_edge.Checked = Global.Game.GetBool("Glide64mk2_decrease_fillrect_edge", false);
-				Glide64mk2_buff_clear.Checked = Global.Game.GetBool("Glide64mk2_buff_clear", true);
-				Glide64mk2_alt_tex_size.Checked = Global.Game.GetBool("Glide64mk2_alt_tex_size", true);
-				Glide64mk2_swapmode.SelectedIndex = Global.Game.GetInt("Glide64mk2_swapmode", 1);
-				Glide64mk2_stipple_pattern.Text = Global.Game.GetInt("Glide64mk2_stipple_pattern", 1041204192).ToString();
-				Glide64mk2_stipple_mode.Text = Global.Game.GetInt("Glide64mk2_stipple_mode", 2).ToString();
-				Glide64mk2_lodmode.SelectedIndex = Global.Game.GetInt("Glide64mk2_lodmode", 0);
-				Glide64mk2_filtering.SelectedIndex = Global.Game.GetInt("Glide64mk2_filtering", 0);
-				Glide64mk2_correct_viewport.Checked = Global.Game.GetBool("Glide64mk2_correct_viewport", false);
-				Glide64mk2_force_calc_sphere.Checked = Global.Game.GetBool("Glide64mk2_force_calc_sphere", false);
-				Glide64mk2_pal230.Checked = Global.Game.GetBool("Glide64mk2_pal230", false);
-				Glide64mk2_texture_correction.Checked = Global.Game.GetBool("Glide64mk2_texture_correction", true);
-				Glide64mk2_n64_z_scale.Checked = Global.Game.GetBool("Glide64mk2_n64_z_scale", false);
-				Glide64mk2_old_style_adither.Checked = Global.Game.GetBool("Glide64mk2_old_style_adither", false);
-				Glide64mk2_zmode_compare_less.Checked = Global.Game.GetBool("Glide64mk2_zmode_compare_less", false);
-				Glide64mk2_adjust_aspect.Checked = Global.Game.GetBool("Glide64mk2_adjust_aspect", true);
-				Glide64mk2_clip_zmax.Checked = Global.Game.GetBool("Glide64mk2_clip_zmax", true);
-				Glide64mk2_clip_zmin.Checked = Global.Game.GetBool("Glide64mk2_clip_zmin", false);
-				Glide64mk2_force_quad3d.Checked = Global.Game.GetBool("Glide64mk2_force_quad3d", false);
-				Glide64mk2_useless_is_useless.Checked = Global.Game.GetBool("Glide64mk2_useless_is_useless", false);
-				Glide64mk2_fb_read_always.Checked = Global.Game.GetBool("Glide64mk2_fb_read_always", false);
-				Glide64mk2_aspectmode.SelectedIndex = Global.Game.GetInt("Glide64mk2_aspectmode", 0);
-				Glide64mk2_fb_crc_mode.SelectedIndex = Global.Game.GetInt("Glide64mk2_fb_crc_mode", 1);
-				Glide64mk2_enable_hacks_for_game.SelectedIndex = Global.Game.GetInt("Glide64mk2_enable_hacks_for_game", 0);
-				Glide64mk2_read_back_to_screen.SelectedIndex = Global.Game.GetInt("Glide64mk2_read_back_to_screen", 0);
-				Glide64mk2_fast_crc.Checked = Global.Game.GetBool("Glide64mk2_fast_crc", true);
+				Glide64mk2_use_sts1_only.Checked = _game.GetBool("Glide64mk2_use_sts1_only", false);
+				Glide64mk2_optimize_texrect.Checked = _game.GetBool("Glide64mk2_optimize_texrect", true);
+				Glide64mk2_increase_texrect_edge.Checked = _game.GetBool("Glide64mk2_increase_texrect_edge", false);
+				Glide64mk2_ignore_aux_copy.Checked = _game.GetBool("Glide64mk2_ignore_aux_copy", false);
+				Glide64mk2_hires_buf_clear.Checked = _game.GetBool("Glide64mk2_hires_buf_clear", true);
+				Glide64mk2_force_microcheck.Checked = _game.GetBool("Glide64mk2_force_microcheck", false);
+				Glide64mk2_fog.Checked = _game.GetBool("Glide64mk2_fog", true);
+				Glide64mk2_fb_smart.Checked = _game.GetBool("Glide64mk2_fb_smart", false);
+				Glide64mk2_fb_read_alpha.Checked = _game.GetBool("Glide64mk2_fb_read_alpha", false);
+				Glide64mk2_fb_hires.Checked = _game.GetBool("Glide64mk2_fb_hires", true);
+				Glide64mk2_detect_cpu_write.Checked = _game.GetBool("Glide64mk2_detect_cpu_write", false);
+				Glide64mk2_decrease_fillrect_edge.Checked = _game.GetBool("Glide64mk2_decrease_fillrect_edge", false);
+				Glide64mk2_buff_clear.Checked = _game.GetBool("Glide64mk2_buff_clear", true);
+				Glide64mk2_alt_tex_size.Checked = _game.GetBool("Glide64mk2_alt_tex_size", true);
+				Glide64mk2_swapmode.SelectedIndex = _game.GetInt("Glide64mk2_swapmode", 1);
+				Glide64mk2_stipple_pattern.Text = _game.GetInt("Glide64mk2_stipple_pattern", 1041204192).ToString();
+				Glide64mk2_stipple_mode.Text = _game.GetInt("Glide64mk2_stipple_mode", 2).ToString();
+				Glide64mk2_lodmode.SelectedIndex = _game.GetInt("Glide64mk2_lodmode", 0);
+				Glide64mk2_filtering.SelectedIndex = _game.GetInt("Glide64mk2_filtering", 0);
+				Glide64mk2_correct_viewport.Checked = _game.GetBool("Glide64mk2_correct_viewport", false);
+				Glide64mk2_force_calc_sphere.Checked = _game.GetBool("Glide64mk2_force_calc_sphere", false);
+				Glide64mk2_pal230.Checked = _game.GetBool("Glide64mk2_pal230", false);
+				Glide64mk2_texture_correction.Checked = _game.GetBool("Glide64mk2_texture_correction", true);
+				Glide64mk2_n64_z_scale.Checked = _game.GetBool("Glide64mk2_n64_z_scale", false);
+				Glide64mk2_old_style_adither.Checked = _game.GetBool("Glide64mk2_old_style_adither", false);
+				Glide64mk2_zmode_compare_less.Checked = _game.GetBool("Glide64mk2_zmode_compare_less", false);
+				Glide64mk2_adjust_aspect.Checked = _game.GetBool("Glide64mk2_adjust_aspect", true);
+				Glide64mk2_clip_zmax.Checked = _game.GetBool("Glide64mk2_clip_zmax", true);
+				Glide64mk2_clip_zmin.Checked = _game.GetBool("Glide64mk2_clip_zmin", false);
+				Glide64mk2_force_quad3d.Checked = _game.GetBool("Glide64mk2_force_quad3d", false);
+				Glide64mk2_useless_is_useless.Checked = _game.GetBool("Glide64mk2_useless_is_useless", false);
+				Glide64mk2_fb_read_always.Checked = _game.GetBool("Glide64mk2_fb_read_always", false);
+				Glide64mk2_aspectmode.SelectedIndex = _game.GetInt("Glide64mk2_aspectmode", 0);
+				Glide64mk2_fb_crc_mode.SelectedIndex = _game.GetInt("Glide64mk2_fb_crc_mode", 1);
+				Glide64mk2_enable_hacks_for_game.SelectedIndex = _game.GetInt("Glide64mk2_enable_hacks_for_game", 0);
+				Glide64mk2_read_back_to_screen.SelectedIndex = _game.GetInt("Glide64mk2_read_back_to_screen", 0);
+				Glide64mk2_fast_crc.Checked = _game.GetBool("Glide64mk2_fast_crc", true);
 
 				ToggleGlide64mk2HackCheckboxEnable(false);
 			}
@@ -862,11 +902,11 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (GLideN64_UseDefaultHacks.Checked)
 			{
-				GLideN64_EnableN64DepthCompare.Checked = Global.Game.GetBool("GLideN64_N64DepthCompare", false);
+				GLideN64_EnableN64DepthCompare.Checked = _game.GetBool("GLideN64_N64DepthCompare", false);
 				GLideN64_EnableCopyColorToRDRAM.SelectedItem = ((N64SyncSettings.N64GLideN64PluginSettings.CopyColorToRDRAMMode)GetIntFromDB("GLideN64_CopyColorToRDRAM", (int)N64SyncSettings.N64GLideN64PluginSettings.CopyColorToRDRAMMode.AsyncMode)).GetDescription();
 				GLideN64_EnableCopyDepthToRDRAM.SelectedItem = ((N64SyncSettings.N64GLideN64PluginSettings.CopyDepthToRDRAMMode)GetIntFromDB("GLideN64_CopyDepthToRDRAM", (int)N64SyncSettings.N64GLideN64PluginSettings.CopyDepthToRDRAMMode.DoNotCopy)).GetDescription();
-				GLideN64_EnableCopyColorFromRDRAM.Checked = Global.Game.GetBool("GLideN64_CopyColorFromRDRAM", false);
-				GLideN64_EnableCopyAuxiliaryToRDRAM.Checked = Global.Game.GetBool("GLideN64_CopyAuxiliaryToRDRAM", false);
+				GLideN64_EnableCopyColorFromRDRAM.Checked = _game.GetBool("GLideN64_CopyColorFromRDRAM", false);
+				GLideN64_EnableCopyAuxiliaryToRDRAM.Checked = _game.GetBool("GLideN64_CopyAuxiliaryToRDRAM", false);
 
 				ToggleGLideN64HackCheckboxEnable(false);
 			}
@@ -876,44 +916,43 @@ namespace BizHawk.Client.EmuHawk
 			}
 		}
 
-
 		private void UpdateGlideHacksSection()
 		{
 			if (GlideUseDefaultHacks1.Checked || GlideUseDefaultHacks2.Checked)
 			{
-				Glide_alt_tex_size.Checked = Global.Game.GetBool("Glide_alt_tex_size", false);
-				Glide_buff_clear.Checked = Global.Game.GetBool("Glide_buff_clear", true);
-				Glide_decrease_fillrect_edge.Checked = Global.Game.GetBool("Glide_decrease_fillrect_edge", false);
-				Glide_detect_cpu_write.Checked = Global.Game.GetBool("Glide_detect_cpu_write", false);
-				Glide_fb_clear.Checked = Global.Game.GetBool("Glide_fb_clear", false);
-				Glide_fb_hires.Checked = Global.Game.GetBool("Glide_fb_hires", true);
-				Glide_fb_read_alpha.Checked = Global.Game.GetBool("Glide_fb_read_alpha", false);
-				Glide_fb_smart.Checked = Global.Game.GetBool("Glide_fb_smart", false);
-				Glide_fillcolor_fix.Checked = Global.Game.GetBool("Glide_fillcolor_fix", false);
-				Glide_fog.Checked = Global.Game.GetBool("Glide_fog", true);
-				Glide_force_depth_compare.Checked = Global.Game.GetBool("Glide_force_depth_compare", false);
-				Glide_force_microcheck.Checked = Global.Game.GetBool("Glide_force_microcheck", false);
-				Glide_fb_hires_buf_clear.Checked = Global.Game.GetBool("Glide_fb_hires_buf_clear", true);
-				Glide_fb_ignore_aux_copy.Checked = Global.Game.GetBool("Glide_fb_ignore_aux_copy", false);
-				Glide_fb_ignore_previous.Checked = Global.Game.GetBool("Glide_fb_ignore_previous", false);
-				Glide_increase_primdepth.Checked = Global.Game.GetBool("Glide_increase_primdepth", false);
-				Glide_increase_texrect_edge.Checked = Global.Game.GetBool("Glide_increase_texrect_edge", false);
-				Glide_fb_optimize_texrect.Checked = Global.Game.GetBool("Glide_fb_optimize_texrect", true);
-				Glide_fb_optimize_write.Checked = Global.Game.GetBool("Glide_fb_optimize_write", false);
-				Glide_PPL.Checked = Global.Game.GetBool("Glide_PPL", false);
-				Glide_soft_depth_compare.Checked = Global.Game.GetBool("Glide_soft_depth_compare", false);
-				Glide_use_sts1_only.Checked = Global.Game.GetBool("Glide_use_sts1_only", false);
-				Glide_wrap_big_tex.Checked = Global.Game.GetBool("Glide_wrap_big_tex", false);
+				Glide_alt_tex_size.Checked = _game.GetBool("Glide_alt_tex_size", false);
+				Glide_buff_clear.Checked = _game.GetBool("Glide_buff_clear", true);
+				Glide_decrease_fillrect_edge.Checked = _game.GetBool("Glide_decrease_fillrect_edge", false);
+				Glide_detect_cpu_write.Checked = _game.GetBool("Glide_detect_cpu_write", false);
+				Glide_fb_clear.Checked = _game.GetBool("Glide_fb_clear", false);
+				Glide_fb_hires.Checked = _game.GetBool("Glide_fb_hires", true);
+				Glide_fb_read_alpha.Checked = _game.GetBool("Glide_fb_read_alpha", false);
+				Glide_fb_smart.Checked = _game.GetBool("Glide_fb_smart", false);
+				Glide_fillcolor_fix.Checked = _game.GetBool("Glide_fillcolor_fix", false);
+				Glide_fog.Checked = _game.GetBool("Glide_fog", true);
+				Glide_force_depth_compare.Checked = _game.GetBool("Glide_force_depth_compare", false);
+				Glide_force_microcheck.Checked = _game.GetBool("Glide_force_microcheck", false);
+				Glide_fb_hires_buf_clear.Checked = _game.GetBool("Glide_fb_hires_buf_clear", true);
+				Glide_fb_ignore_aux_copy.Checked = _game.GetBool("Glide_fb_ignore_aux_copy", false);
+				Glide_fb_ignore_previous.Checked = _game.GetBool("Glide_fb_ignore_previous", false);
+				Glide_increase_primdepth.Checked = _game.GetBool("Glide_increase_primdepth", false);
+				Glide_increase_texrect_edge.Checked = _game.GetBool("Glide_increase_texrect_edge", false);
+				Glide_fb_optimize_texrect.Checked = _game.GetBool("Glide_fb_optimize_texrect", true);
+				Glide_fb_optimize_write.Checked = _game.GetBool("Glide_fb_optimize_write", false);
+				Glide_PPL.Checked = _game.GetBool("Glide_PPL", false);
+				Glide_soft_depth_compare.Checked = _game.GetBool("Glide_soft_depth_compare", false);
+				Glide_use_sts1_only.Checked = _game.GetBool("Glide_use_sts1_only", false);
+				Glide_wrap_big_tex.Checked = _game.GetBool("Glide_wrap_big_tex", false);
 
-				Glide_depth_bias.Text = Global.Game.GetInt("Glide_depth_bias", 20).ToString();
-				Glide_filtering.SelectedIndex = Global.Game.GetInt("Glide_filtering", 1);
-				Glide_fix_tex_coord.Text = Global.Game.GetInt("Glide_fix_tex_coord", 0).ToString();
-				Glide_lodmode.SelectedIndex = Global.Game.GetInt("Glide_lodmode", 0);
+				Glide_depth_bias.Text = _game.GetInt("Glide_depth_bias", 20).ToString();
+				Glide_filtering.SelectedIndex = _game.GetInt("Glide_filtering", 1);
+				Glide_fix_tex_coord.Text = _game.GetInt("Glide_fix_tex_coord", 0).ToString();
+				Glide_lodmode.SelectedIndex = _game.GetInt("Glide_lodmode", 0);
 
-				Glide_stipple_mode.Text = Global.Game.GetInt("Glide_stipple_mode", 2).ToString();
-				Glide_stipple_pattern.Text = Global.Game.GetInt("Glide_stipple_pattern", 1041204192).ToString();
-				Glide_swapmode.SelectedIndex = Global.Game.GetInt("Glide_swapmode", 1);
-				Glide_enable_hacks_for_game.SelectedIndex = Global.Game.GetInt("Glide_enable_hacks_for_game", 0);
+				Glide_stipple_mode.Text = _game.GetInt("Glide_stipple_mode", 2).ToString();
+				Glide_stipple_pattern.Text = _game.GetInt("Glide_stipple_pattern", 1041204192).ToString();
+				Glide_swapmode.SelectedIndex = _game.GetInt("Glide_swapmode", 1);
+				Glide_enable_hacks_for_game.SelectedIndex = _game.GetInt("Glide_enable_hacks_for_game", 0);
 				
 				ToggleGlideHackCheckboxEnable(false);
 			}
@@ -965,14 +1004,14 @@ namespace BizHawk.Client.EmuHawk
 
 		private bool GetBoolFromDB(string parameter)
 		{
-			return Global.Game.OptionPresent(parameter) && Global.Game.OptionValue(parameter) == "true";
+			return _game.OptionPresent(parameter) && _game.OptionValue(parameter) == "true";
 		}
 
 		private int GetIntFromDB(string parameter, int defaultVal)
 		{
-			if (Global.Game.OptionPresent(parameter) && Global.Game.OptionValue(parameter).IsUnsigned())
+			if (_game.OptionPresent(parameter) && _game.OptionValue(parameter).IsUnsigned())
 			{
-				return int.Parse(Global.Game.OptionValue(parameter));
+				return int.Parse(_game.OptionValue(parameter));
 			}
 
 			return defaultVal;
@@ -1094,6 +1133,19 @@ namespace BizHawk.Client.EmuHawk
 			GLideN64_EnableCopyAuxiliaryToRDRAM.Enabled = val;
 		}
 
+		private void GLideN64_EnableOverscan_CheckedChanged(object sender, EventArgs e)
+		{
+			GLideN64_OverscanNtscTop.Enabled =
+			GLideN64_OverscanNtscBottom.Enabled =
+			GLideN64_OverscanNtscLeft.Enabled =
+			GLideN64_OverscanNtscRight.Enabled =
+			GLideN64_OverscanPalTop.Enabled =
+			GLideN64_OverscanPalBottom.Enabled =
+			GLideN64_OverscanPalLeft.Enabled =
+			GLideN64_OverscanPalRight.Enabled =
+				GLideN64_EnableOverscan.Checked;
+		}
+
 		private void GlideUseDefaultHacks1_CheckedChanged(object sender, EventArgs e)
 		{
 			GlideUseDefaultHacks2.Checked = GlideUseDefaultHacks1.Checked;
@@ -1135,11 +1187,11 @@ namespace BizHawk.Client.EmuHawk
 				VideoResolutionComboBox.SelectedIndex = 0;
 			}
 
-			var strArr = new string[] {};
+			string[] strArr;
 			int oldSizeX, oldSizeY;
 
-			var oldResolution = VideoResolutionComboBox.SelectedItem.ToString();
-			if (oldResolution != "Custom")
+			var oldResolution = VideoResolutionComboBox.SelectedItem?.ToString() ?? "";
+			if (oldResolution != CustomResItemName)
 			{
 				strArr = oldResolution.Split('x');
 				oldSizeX = int.Parse(strArr[0].Trim());
@@ -1168,7 +1220,7 @@ namespace BizHawk.Client.EmuHawk
 				int bestFit = -1;
 				for (int i = 0; i < VideoResolutionComboBox.Items.Count; i++)
 				{
-					if ((string)VideoResolutionComboBox.Items[i] != "Custom")
+					if ((string)VideoResolutionComboBox.Items[i] != CustomResItemName)
 					{
 						string option = (string)VideoResolutionComboBox.Items[i];
 						strArr = option.Split('x');
@@ -1181,11 +1233,9 @@ namespace BizHawk.Client.EmuHawk
 								bestFit = 0;
 								break;
 							}
-							else
-							{
-								bestFit = i - 1;
-								break;
-							}
+							
+							bestFit = i - 1;
+							break;
 						}
 					}
 				}
@@ -1203,7 +1253,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void VideoResolutionComboBox_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			if (VideoResolutionComboBox.Text == "Custom")
+			if (VideoResolutionComboBox.Text == CustomResItemName)
 			{
 				ShowCustomVideoResolutionControls();
 			}

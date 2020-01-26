@@ -103,7 +103,7 @@
 							  (_intSpriteDataCollision ? 0x02 : 0x00) |
 							  (_intSpriteCollision ? 0x04 : 0x00) |
 							  (_intLightPen ? 0x08 : 0x00) |
-							  (_pinIrq ? 0x00 : 0x80);
+							  ((_irqBuffer & 1) << 7);
 				case 0x1A:
 					return 0xF0 | (_enableIntRaster ? 0x01 : 0x00) |
 							  (_enableIntSpriteDataCollision ? 0x02 : 0x00) |
@@ -181,10 +181,12 @@
 					return 0xFF;
 			}
 		}
-
+		
 		public void Write(int addr, int val)
 		{
 			addr &= 0x3F;
+			val &= 0xFF;
+
 			switch (addr)
 			{
 				case 0x17:
@@ -214,7 +216,6 @@
 						_intSpriteCollision = false;
 					if ((val & 0x08) != 0)
 						_intLightPen = false;
-					UpdatePins();
 					break;
 				case 0x1E:
 				case 0x1F:
@@ -337,14 +338,12 @@
 					_intSpriteDataCollision = (val & 0x02) != 0;
 					_intSpriteCollision = (val & 0x04) != 0;
 					_intLightPen = (val & 0x08) != 0;
-					UpdatePins();
 					break;
 				case 0x1A:
 					_enableIntRaster = (val & 0x01) != 0;
 					_enableIntSpriteDataCollision = (val & 0x02) != 0;
 					_enableIntSpriteCollision = (val & 0x04) != 0;
 					_enableIntLightPen = (val & 0x08) != 0;
-					UpdatePins();
 					break;
 				case 0x1B:
 					_sprite0.Priority = (val & 0x01) != 0;

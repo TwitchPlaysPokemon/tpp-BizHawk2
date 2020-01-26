@@ -19,7 +19,7 @@ namespace BizHawk.Emulation.DiscSystem
 
 		private static string[] Escape(IEnumerable<string> args)
 		{
-			return args.Select(s => s.Contains(" ") ? string.Format("\"{0}\"", s) : s).ToArray();
+			return args.Select(s => s.Contains(" ") ? $"\"{s}\"" : s).ToArray();
 		}
 
 		//note: accepts . or : in the stream stream/substream separator in the stream ID format, since that changed at some point in FFMPEG history
@@ -85,6 +85,7 @@ namespace BizHawk.Emulation.DiscSystem
 			};
 		}
 
+		/// <exception cref="InvalidOperationException">FFmpeg exited with non-zero exit code or produced no output</exception>
 		public byte[] DecodeAudio(string path)
 		{
 			string tempfile = Path.GetTempFileName();
@@ -92,10 +93,10 @@ namespace BizHawk.Emulation.DiscSystem
 			{
 				var runResults = Run("-i", path, "-xerror", "-f", "wav", "-ar", "44100", "-ac", "2", "-acodec", "pcm_s16le", "-y", tempfile);
 				if(runResults.ExitCode != 0)
-					throw new InvalidOperationException("Failure running ffmpeg for audio decode. here was its output:\r\n" + runResults.Text);
+					throw new InvalidOperationException($"Failure running ffmpeg for audio decode. here was its output:\r\n{runResults.Text}");
 				byte[] ret = File.ReadAllBytes(tempfile);
 				if (ret.Length == 0)
-					throw new InvalidOperationException("Failure running ffmpeg for audio decode. here was its output:\r\n" + runResults.Text);
+					throw new InvalidOperationException($"Failure running ffmpeg for audio decode. here was its output:\r\n{runResults.Text}");
 				return ret;
 			}
 			finally
@@ -158,12 +159,13 @@ namespace BizHawk.Emulation.DiscSystem
 			return null;
 		}
 
+		/// <exception cref="AudioDecoder_Exception">could not find source audio for <paramref name="audioPath"/></exception>
 		public byte[] AcquireWaveData(string audioPath)
 		{
 			string path = FindAudio(audioPath);
 			if (path == null)
 			{
-				throw new AudioDecoder_Exception("Could not find source audio for: " + Path.GetFileName(audioPath));
+				throw new AudioDecoder_Exception($"Could not find source audio for: {Path.GetFileName(audioPath)}");
 			}
 			return new FFMpeg().DecodeAudio(path);
 		}

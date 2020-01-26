@@ -47,12 +47,13 @@ namespace BizHawk.Emulation.DiscSystem
 		/// </summary>
 		public bool OUT_SlowLoadAborted;
 
+		/// <exception cref="NotSupportedException"><see cref="IN_DiscInterface"/> is <see cref="DiscInterface.LibMirage"/></exception>
 		public void Run()
 		{
 			switch (IN_DiscInterface)
 			{
 				case DiscInterface.LibMirage:
-					throw new NotSupportedException("LibMirage not supported yet");
+					throw new NotSupportedException($"{nameof(DiscInterface.LibMirage)} not supported yet");
 				case DiscInterface.BizHawk:
 					RunBizHawk();
 					break;
@@ -116,11 +117,10 @@ namespace BizHawk.Emulation.DiscSystem
 			{
 				//make a fake cue file to represent this iso file and rerun it as a cue
 				string filebase = Path.GetFileName(infile);
-				cue_content = string.Format(@"
-						FILE ""{0}"" BINARY
-							TRACK 01 MODE1/2048
-								INDEX 01 00:00:00",
-					filebase);
+				cue_content = $@"
+					FILE ""{filebase}"" BINARY
+						TRACK 01 MODE1/2048
+							INDEX 01 00:00:00";
 				infile = Path.ChangeExtension(infile, ".cue");
 				goto RERUN;
 			}
@@ -187,11 +187,11 @@ namespace BizHawk.Emulation.DiscSystem
 				CCD_Format ccdLoader = new CCD_Format();
 				OUT_Disc = ccdLoader.LoadCCDToDisc(IN_FromPath, IN_DiscMountPolicy);
 			}
-            else if (ext == ".mds")
-            {
-                MDS_Format mdsLoader = new MDS_Format();
-                OUT_Disc = mdsLoader.LoadMDSToDisc(IN_FromPath, IN_DiscMountPolicy);
-            }
+			else if (ext == ".mds")
+			{
+				MDS_Format mdsLoader = new MDS_Format();
+				OUT_Disc = mdsLoader.LoadMDSToDisc(IN_FromPath, IN_DiscMountPolicy);
+			}
 
 
 		DONE:

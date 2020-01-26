@@ -5,21 +5,36 @@ using System.Linq;
 
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Nintendo.NES;
+using BizHawk.Emulation.Cores.Nintendo.SubNESHawk;
 using BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES;
 
 namespace BizHawk.Client.EmuHawk
 {
 	[Schema("NES")]
+	// ReSharper disable once UnusedMember.Global
 	public class NesSchema : IVirtualPadSchema
 	{
+		/// <exception cref="Exception">found <c>ControllerSNES</c></exception>
 		public IEnumerable<PadSchema> GetPadSchemas(IEmulator core)
 		{
-			if (core is NES)
+			if (core is NES || core is SubNESHawk)
 			{
-				var nes = (NES)core;
-				var ss = nes.GetSyncSettings();
+				NES.NESSyncSettings ss = null;
+				bool isFds = false;
+				int fdsButtonCount = 0;
+				if (core is NES nesHawk)
+				{
+					ss = nesHawk.GetSyncSettings();
+					isFds = nesHawk.IsFDS;
+					fdsButtonCount = nesHawk.ControllerDefinition.BoolButtons.Count(b => b.StartsWith("FDS Insert "));
+				}
+				else if (core is SubNESHawk subNesHawk)
+				{
+					ss = subNesHawk.GetSyncSettings();
+					isFds = subNesHawk.IsFDS;
+					fdsButtonCount = subNesHawk.ControllerDefinition.BoolButtons.Count(b => b.StartsWith("FDS Insert "));
+				}
 
-				var isFds = nes.IsFDS;
 				if (ss.Controls.Famicom)
 				{
 					yield return StandardController(1);
@@ -50,7 +65,7 @@ namespace BizHawk.Client.EmuHawk
 				}
 				else
 				{
-					var currentControlerNo = 1;
+					var currentControllerNo = 1;
 					switch (ss.Controls.NesLeftPort)
 					{
 						default:
@@ -58,24 +73,24 @@ namespace BizHawk.Client.EmuHawk
 							break;
 						case "ControllerNES":
 							yield return StandardController(1);
-							currentControlerNo++;
+							currentControllerNo++;
 							break;
 						case "Zapper":
 							yield return Zapper(1);
-							currentControlerNo++;
+							currentControllerNo++;
 							break;
 						case "ArkanoidNES":
 							yield return ArkanoidPaddle(1);
-							currentControlerNo++;
+							currentControllerNo++;
 							break;
 						case "FourScore":
 							yield return StandardController(1);
 							yield return StandardController(2);
-							currentControlerNo += 2;
+							currentControllerNo += 2;
 							break;
 						case "PowerPad":
 							yield return PowerPad(1);
-							currentControlerNo++;
+							currentControllerNo++;
 							break;
 						case "ControllerSNES":
 							throw new Exception("TODO");
@@ -87,27 +102,27 @@ namespace BizHawk.Client.EmuHawk
 						case "UnpluggedNES":
 							break;
 						case "ControllerNES":
-							yield return StandardController(currentControlerNo);
+							yield return StandardController(currentControllerNo);
 							break;
 						case "Zapper":
-							yield return Zapper(currentControlerNo);
+							yield return Zapper(currentControllerNo);
 							break;
 						case "ArkanoidNES":
-							yield return ArkanoidPaddle(currentControlerNo);
+							yield return ArkanoidPaddle(currentControllerNo);
 							break;
 						case "FourScore":
-							yield return StandardController(currentControlerNo);
-							yield return StandardController(currentControlerNo + 1);
-							currentControlerNo += 2;
+							yield return StandardController(currentControllerNo);
+							yield return StandardController(currentControllerNo + 1);
+							currentControllerNo += 2;
 							break;
 						case "PowerPad":
-							yield return PowerPad(currentControlerNo);
+							yield return PowerPad(currentControllerNo);
 							break;
 						case "ControllerSNES":
 							throw new Exception("TODO");
 					}
 
-					if (currentControlerNo == 0)
+					if (currentControllerNo == 0)
 					{
 						yield return null;
 					}
@@ -115,7 +130,7 @@ namespace BizHawk.Client.EmuHawk
 
 				if (isFds)
 				{
-					yield return FdsConsoleButtons(core.ControllerDefinition.BoolButtons.Count(b => b.StartsWith("FDS Insert ")));
+					yield return FdsConsoleButtons(fdsButtonCount);
 				}
 				else
 				{
@@ -126,17 +141,17 @@ namespace BizHawk.Client.EmuHawk
 				// Quicknes Can support none, one or two controllers.
 			{
 				var ss = ((QuickNES)core).GetSyncSettings();
-				if (ss.LeftPortConnected == true && ss.RightPortConnected == true)
+				if (ss.LeftPortConnected && ss.RightPortConnected)
 				{
 					// Set both controllers
 					yield return StandardController(1);
 					yield return StandardController(2);
 				}
-				else if (ss.LeftPortConnected == true && ss.RightPortConnected == false)
+				else if (ss.LeftPortConnected && !ss.RightPortConnected)
 				{
 					yield return StandardController(1);
 				}
-				else if (ss.LeftPortConnected == false && ss.RightPortConnected == true)
+				else if (!ss.LeftPortConnected && ss.RightPortConnected)
 				{
 					yield return StandardController(1);
 				}
@@ -203,8 +218,8 @@ namespace BizHawk.Client.EmuHawk
 			{
 				buttons.Add(new PadSchema.ButtonSchema
 				{
-					Name = "FDS Insert " + i,
-					DisplayName = "Insert " + i,
+					Name = $"FDS Insert {i}",
+					DisplayName = $"Insert {i}",
 					Location = new Point(10 + (i * 58), 50),
 					Type = PadSchema.PadInputType.Boolean
 				});
@@ -229,7 +244,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			return new PadSchema
 			{
-				DisplayName = "Player " + controller,
+				DisplayName = $"Player {controller}",
 				IsConsole = false,
 				DefaultSize = new Size(174, 74),
 				MaxSize = new Size(174, 74),
@@ -237,7 +252,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Up",
+						Name = $"P{controller} Up",
 						DisplayName = "",
 						Icon = Properties.Resources.BlueUp,
 						Location = new Point(23, 15),
@@ -245,7 +260,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Down",
+						Name = $"P{controller} Down",
 						DisplayName = "",
 						Icon = Properties.Resources.BlueDown,
 						Location = new Point(23, 36),
@@ -253,7 +268,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left",
+						Name = $"P{controller} Left",
 						DisplayName = "",
 						Icon = Properties.Resources.Back,
 						Location = new Point(2, 24),
@@ -261,7 +276,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right",
+						Name = $"P{controller} Right",
 						DisplayName = "",
 						Icon = Properties.Resources.Forward,
 						Location = new Point(44, 24),
@@ -269,28 +284,28 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B",
+						Name = $"P{controller} B",
 						DisplayName = "B",
 						Location = new Point(124, 24),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " A",
+						Name = $"P{controller} A",
 						DisplayName = "A",
 						Location = new Point(147, 24),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Select",
+						Name = $"P{controller} Select",
 						DisplayName = "s",
 						Location = new Point(72, 24),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Start",
+						Name = $"P{controller} Start",
 						DisplayName = "S",
 						Location = new Point(93, 24),
 						Type = PadSchema.PadInputType.Boolean
@@ -312,7 +327,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Up",
+						Name = $"P{controller} Up",
 						DisplayName = "",
 						Icon = Properties.Resources.BlueUp,
 						Location = new Point(23, 15),
@@ -320,7 +335,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Down",
+						Name = $"P{controller} Down",
 						DisplayName = "",
 						Icon = Properties.Resources.BlueDown,
 						Location = new Point(23, 36),
@@ -328,7 +343,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left",
+						Name = $"P{controller} Left",
 						DisplayName = "",
 						Icon = Properties.Resources.Back,
 						Location = new Point(2, 24),
@@ -336,7 +351,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right",
+						Name = $"P{controller} Right",
 						DisplayName = "",
 						Icon = Properties.Resources.Forward,
 						Location = new Point(44, 24),
@@ -344,21 +359,21 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B",
+						Name = $"P{controller} B",
 						DisplayName = "B",
 						Location = new Point(124, 24),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " A",
+						Name = $"P{controller} A",
 						DisplayName = "A",
 						Location = new Point(147, 24),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Microphone",
+						Name = $"P{controller} Microphone",
 						DisplayName = "Mic",
 						Location = new Point(72, 24),
 						Type = PadSchema.PadInputType.Boolean
@@ -379,18 +394,18 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Zapper X",
+						Name = $"P{controller} Zapper X",
 						Location = new Point(14, 17),
 						Type = PadSchema.PadInputType.TargetedPair,
 						TargetSize = new Size(256, 240),
 						SecondaryNames = new[]
 						{
-							"P" + controller + " Zapper Y",
+							$"P{controller} Zapper Y",
 						}
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Fire",
+						Name = $"P{controller} Fire",
 						DisplayName = "Fire",
 						Location = new Point(284, 17),
 						Type = PadSchema.PadInputType.Boolean
@@ -411,7 +426,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Paddle",
+						Name = $"P{controller} Paddle",
 						DisplayName = "Arkanoid Paddle",
 						Location = new Point(14, 17),
 						Type = PadSchema.PadInputType.FloatSingle,
@@ -420,7 +435,7 @@ namespace BizHawk.Client.EmuHawk
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Fire",
+						Name = $"P{controller} Fire",
 						DisplayName = "Fire",
 						Location = new Point(14, 85),
 						Type = PadSchema.PadInputType.Boolean
@@ -440,56 +455,56 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP1",
+						Name = $"P{controller} PP1",
 						DisplayName = "1  ",
 						Location = new Point(14, 17),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP2",
+						Name = $"P{controller} PP2",
 						DisplayName = "2  ",
 						Location = new Point(45, 17),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP3",
+						Name = $"P{controller} PP3",
 						DisplayName = "3  ",
 						Location = new Point(76, 17),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP4",
+						Name = $"P{controller} PP4",
 						DisplayName = "4  ",
 						Location = new Point(107, 17),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP5",
+						Name = $"P{controller} PP5",
 						DisplayName = "5  ",
 						Location = new Point(14, 48),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP6",
+						Name = $"P{controller} PP6",
 						DisplayName = "6  ",
 						Location = new Point(45, 48),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP7",
+						Name = $"P{controller} PP7",
 						DisplayName = "7  ",
 						Location = new Point(76, 48),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP8",
+						Name = $"P{controller} PP8",
 						DisplayName = "8  ",
 						Location = new Point(107, 48),
 						Type = PadSchema.PadInputType.Boolean,
@@ -497,28 +512,28 @@ namespace BizHawk.Client.EmuHawk
 
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP9",
+						Name = $"P{controller} PP9",
 						DisplayName = "9  ",
 						Location = new Point(14, 79),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP10",
+						Name = $"P{controller} PP10",
 						DisplayName = "10",
 						Location = new Point(45, 79),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP11",
+						Name = $"P{controller} PP11",
 						DisplayName = "11",
 						Location = new Point(76, 79),
 						Type = PadSchema.PadInputType.Boolean,
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " PP12",
+						Name = $"P{controller} PP12",
 						DisplayName = "12",
 						Location = new Point(107, 79),
 						Type = PadSchema.PadInputType.Boolean,
@@ -539,25 +554,25 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Pen X",
+						Name = $"P{controller} Pen X",
 						Location = new Point(14, 17),
 						Type = PadSchema.PadInputType.TargetedPair,
 						TargetSize = new Size(256, 240),
 						SecondaryNames = new[]
 						{
-							"P" + controller + " Pen Y",
+							$"P{controller} Pen Y",
 						}
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Click",
+						Name = $"P{controller} Click",
 						DisplayName = "Click",
 						Location = new Point(284, 17),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Touch",
+						Name = $"P{controller} Touch",
 						DisplayName = "Touch",
 						Location = new Point(284, 48),
 						Type = PadSchema.PadInputType.Boolean
@@ -577,504 +592,504 @@ namespace BizHawk.Client.EmuHawk
 				{
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F1",
+						Name = $"P{controller} F1",
 						DisplayName = "    F1    ",
 						Location = new Point(23, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F2",
+						Name = $"P{controller} F2",
 						DisplayName = "    F2    ",
 						Location = new Point(76, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F3",
+						Name = $"P{controller} F3",
 						DisplayName = "    F3    ",
 						Location = new Point(129, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F4",
+						Name = $"P{controller} F4",
 						DisplayName = "    F4    ",
 						Location = new Point(182, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F5",
+						Name = $"P{controller} F5",
 						DisplayName = "    F5    ",
 						Location = new Point(235, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F6",
+						Name = $"P{controller} F6",
 						DisplayName = "    F6    ",
 						Location = new Point(288, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F7",
+						Name = $"P{controller} F7",
 						DisplayName = "    F7    ",
 						Location = new Point(341, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F8",
+						Name = $"P{controller} F8",
 						DisplayName = "    F8    ",
 						Location = new Point(394, 15),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 1",
+						Name = $"P{controller} 1",
 						DisplayName = "1",
 						Location = new Point(36, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 2",
+						Name = $"P{controller} 2",
 						DisplayName = "2",
 						Location = new Point(60, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 3",
+						Name = $"P{controller} 3",
 						DisplayName = "3",
 						Location = new Point(84, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 4",
+						Name = $"P{controller} 4",
 						DisplayName = "4",
 						Location = new Point(108, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 5",
+						Name = $"P{controller} 5",
 						DisplayName = "5",
 						Location = new Point(132, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 6",
+						Name = $"P{controller} 6",
 						DisplayName = "6",
 						Location = new Point(156, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 7",
+						Name = $"P{controller} 7",
 						DisplayName = "7",
 						Location = new Point(180, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 8",
+						Name = $"P{controller} 8",
 						DisplayName = "8",
 						Location = new Point(204, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 9",
+						Name = $"P{controller} 9",
 						DisplayName = "9",
 						Location = new Point(228, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " 0",
+						Name = $"P{controller} 0",
 						DisplayName = "0",
 						Location = new Point(252, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Minus",
+						Name = $"P{controller} Minus",
 						DisplayName = "-",
 						Location = new Point(276, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Caret",
+						Name = $"P{controller} Caret",
 						DisplayName = "^",
 						Location = new Point(296, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Yen",
+						Name = $"P{controller} Yen",
 						DisplayName = "¥",
 						Location = new Point(320, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Stop",
+						Name = $"P{controller} Stop",
 						DisplayName = "STOP",
 						Location = new Point(344, 38),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Escape",
+						Name = $"P{controller} Escape",
 						DisplayName = "ESC",
 						Location = new Point(15, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Q",
+						Name = $"P{controller} Q",
 						DisplayName = "Q",
 						Location = new Point(54, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " W",
+						Name = $"P{controller} W",
 						DisplayName = "W",
 						Location = new Point(80, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " E",
+						Name = $"P{controller} E",
 						DisplayName = "E",
 						Location = new Point(108, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " R",
+						Name = $"P{controller} R",
 						DisplayName = "R",
 						Location = new Point(132, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " T",
+						Name = $"P{controller} T",
 						DisplayName = "T",
 						Location = new Point(158, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Y",
+						Name = $"P{controller} Y",
 						DisplayName = "Y",
 						Location = new Point(182, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " U",
+						Name = $"P{controller} U",
 						DisplayName = "U",
 						Location = new Point(206, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " I",
+						Name = $"P{controller} I",
 						DisplayName = "I",
 						Location = new Point(232, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " O",
+						Name = $"P{controller} O",
 						DisplayName = "O",
 						Location = new Point(252, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " P",
+						Name = $"P{controller} P",
 						DisplayName = "P",
 						Location = new Point(278, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " At",
+						Name = $"P{controller} At",
 						DisplayName = "@",
 						Location = new Point(302, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left Bracket",
+						Name = $"P{controller} Left Bracket",
 						DisplayName = "[",
 						Location = new Point(330, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Return",
+						Name = $"P{controller} Return",
 						DisplayName = "RETURN",
 						Location = new Point(350, 61),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Control",
+						Name = $"P{controller} Control",
 						DisplayName = "CTR",
 						Location = new Point(30, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " A",
+						Name = $"P{controller} A",
 						DisplayName = "A",
 						Location = new Point(70, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " S",
+						Name = $"P{controller} S",
 						DisplayName = "S",
 						Location = new Point(94, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " D",
+						Name = $"P{controller} D",
 						DisplayName = "D",
 						Location = new Point(118, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " F",
+						Name = $"P{controller} F",
 						DisplayName = "F",
 						Location = new Point(144, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " G",
+						Name = $"P{controller} G",
 						DisplayName = "G",
 						Location = new Point(168, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " H",
+						Name = $"P{controller} H",
 						DisplayName = "H",
 						Location = new Point(194, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " J",
+						Name = $"P{controller} J",
 						DisplayName = "J",
 						Location = new Point(220, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " K",
+						Name = $"P{controller} K",
 						DisplayName = "K",
 						Location = new Point(242, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " L",
+						Name = $"P{controller} L",
 						DisplayName = "L",
 						Location = new Point(266, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Semicolon",
+						Name = $"P{controller} Semicolon",
 						DisplayName = ";",
 						Location = new Point(290, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Colon",
+						Name = $"P{controller} Colon",
 						DisplayName = ":",
 						Location = new Point(311, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right Bracket",
+						Name = $"P{controller} Right Bracket",
 						DisplayName = "]",
 						Location = new Point(332, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " カナ",
+						Name = $"P{controller} カナ",
 						DisplayName = "カナ",
 						Location = new Point(352, 84),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left Shift",
+						Name = $"P{controller} Left Shift",
 						DisplayName = "SHIFT",
 						Location = new Point(10, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Z",
+						Name = $"P{controller} Z",
 						DisplayName = "Z",
 						Location = new Point(58, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " X",
+						Name = $"P{controller} X",
 						DisplayName = "X",
 						Location = new Point(82, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " C",
+						Name = $"P{controller} C",
 						DisplayName = "C",
 						Location = new Point(106, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " V",
+						Name = $"P{controller} V",
 						DisplayName = "V",
 						Location = new Point(130, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " B",
+						Name = $"P{controller} B",
 						DisplayName = "B",
 						Location = new Point(154, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " N",
+						Name = $"P{controller} N",
 						DisplayName = "N",
 						Location = new Point(178, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " M",
+						Name = $"P{controller} M",
 						DisplayName = "M",
 						Location = new Point(203, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Comma",
+						Name = $"P{controller} Comma",
 						DisplayName = ",",
 						Location = new Point(229, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Period",
+						Name = $"P{controller} Period",
 						DisplayName = ".",
 						Location = new Point(249, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Slash",
+						Name = $"P{controller} Slash",
 						DisplayName = "/",
 						Location = new Point(270, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Underscore",
+						Name = $"P{controller} Underscore",
 						DisplayName = "_",
 						Location = new Point(292, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right Shift",
+						Name = $"P{controller} Right Shift",
 						DisplayName = "SHIFT",
 						Location = new Point(316, 107),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Graph",
+						Name = $"P{controller} Graph",
 						DisplayName = "GRPH",
 						Location = new Point(82, 130),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Space",
+						Name = $"P{controller} Space",
 						DisplayName = "                  SPACE                  ",
 						Location = new Point(130, 130),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Clear/Home",
+						Name = $"P{controller} Clear/Home",
 						DisplayName = " CLR\nHOME",
 						Location = new Point(420, 46),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Insert",
+						Name = $"P{controller} Insert",
 						DisplayName = "\nINS",
 						Location = new Point(470, 46),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Delete",
+						Name = $"P{controller} Delete",
 						DisplayName = "\nDEL",
 						Location = new Point(506, 46),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Up",
+						Name = $"P{controller} Up",
 						DisplayName = "  ↑  ",
 						Location = new Point(468, 86),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Down",
+						Name = $"P{controller} Down",
 						DisplayName = "  ↓  ",
 						Location = new Point(468, 134),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Left",
+						Name = $"P{controller} Left",
 						DisplayName = "  ←  ",
 						Location = new Point(446, 110),
 						Type = PadSchema.PadInputType.Boolean
 					},
 					new PadSchema.ButtonSchema
 					{
-						Name = "P" + controller + " Right",
+						Name = $"P{controller} Right",
 						DisplayName = "  ➝  ",
 						Location = new Point(488, 110),
 						Type = PadSchema.PadInputType.Boolean

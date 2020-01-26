@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using BizHawk.Common.NumberExtensions;
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 {
-	public sealed partial class SMS : IDebuggable
+	public partial class SMS : IDebuggable
 	{
 		public IDictionary<string, RegisterValue> GetCpuFlagsAndRegisters()
 		{
@@ -33,7 +32,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 				["Shadow BC"] = Cpu.Regs[Cpu.C_s] + (Cpu.Regs[Cpu.B_s] << 8),
 				["Shadow DE"] = Cpu.Regs[Cpu.E_s] + (Cpu.Regs[Cpu.D_s] << 8),
 				["Shadow HL"] = Cpu.Regs[Cpu.L_s] + (Cpu.Regs[Cpu.H_s] << 8),
-				["SP"] = Cpu.Regs[Cpu.Iyl] + (Cpu.Regs[Cpu.Iyh] << 8),
+				["SP"] = Cpu.Regs[Cpu.SPl] + (Cpu.Regs[Cpu.SPh] << 8),
 				["Flag C"] = Cpu.FlagC,
 				["Flag N"] = Cpu.FlagN,
 				["Flag P/V"] = Cpu.FlagP,
@@ -142,7 +141,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			throw new NotImplementedException();
 		}
 
-		public int TotalExecutedCycles
+		public long TotalExecutedCycles
 		{
 			get { return Cpu.TotalExecutedCycles; }
 		}

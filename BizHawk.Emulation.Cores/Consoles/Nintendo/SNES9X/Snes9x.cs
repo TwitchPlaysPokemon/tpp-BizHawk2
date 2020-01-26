@@ -1,10 +1,7 @@
 ﻿using System;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Waterbox;
-using BizHawk.Common.BizInvoke;
-using System.Runtime.InteropServices;
 using System.IO;
-using BizHawk.Common.BufferExtensions;
 using System.ComponentModel;
 using BizHawk.Common;
 using System.Collections.Generic;
@@ -32,8 +29,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.SNES9X
 				SystemId = "SNES"
 			})
 		{
-			settings = settings ?? new Settings();
-			syncSettings = syncSettings ?? new SyncSettings();
+			settings ??= new Settings();
+			syncSettings ??= new SyncSettings();
 
 			_core = PreInit<LibSnes9x>(new PeRunnerOptions
 			{

@@ -18,34 +18,34 @@ namespace BizHawk.Client.EmuHawk
 		public MarkerControl()
 		{
 			InitializeComponent();
+			SetupColumns();
+			MarkerView.QueryItemBkColor += MarkerView_QueryItemBkColor;
+			MarkerView.QueryItemText += MarkerView_QueryItemText;
+		}
 
+		private void SetupColumns()
+		{
+			MarkerView.AllColumns.Clear();
 			MarkerView.AllColumns.AddRange(new[]
 			{
-				new InputRoll.RollColumn
+				new RollColumn
 				{
 					Name = "FrameColumn",
 					Text = "Frame",
 					Width = 52
 				},
-				new InputRoll.RollColumn
+				new RollColumn
 				{
 					Name = "LabelColumn",
 					Text = "",
 					Width = 125
 				}
 			});
-
-			MarkerView.QueryItemBkColor += MarkerView_QueryItemBkColor;
-			MarkerView.QueryItemText += MarkerView_QueryItemText;
-		}
-
-		private void MarkerControl_Load(object sender, EventArgs e)
-		{
 		}
 
 		public InputRoll MarkerInputRoll => MarkerView;
 
-		private void MarkerView_QueryItemBkColor(int index, InputRoll.RollColumn column, ref Color color)
+		private void MarkerView_QueryItemBkColor(int index, RollColumn column, ref Color color)
 		{
 			var prev = Markers.PreviousOrCurrent(Tastudio.Emulator.Frame);
 
@@ -70,18 +70,10 @@ namespace BizHawk.Client.EmuHawk
 						color = column.Name == "LabelColumn" ? TAStudio.GreenZone_FrameCol : TAStudio.GreenZone_InputLog;
 					}
 				}
-				else
-				{
-					color = Color.White;
-				}
-			}
-			else
-			{
-				color = Color.White;
 			}
 		}
 
-		private void MarkerView_QueryItemText(int index, InputRoll.RollColumn column, out string text, ref int offsetX, ref int offsetY)
+		private void MarkerView_QueryItemText(int index, RollColumn column, out string text, ref int offsetX, ref int offsetY)
 		{
 			text = "";
 
@@ -98,10 +90,12 @@ namespace BizHawk.Client.EmuHawk
 		private void MarkerContextMenu_Opening(object sender, CancelEventArgs e)
 		{
 			EditMarkerToolStripMenuItem.Enabled =
-			RemoveMarkerToolStripMenuItem.Enabled =
-			JumpToMarkerToolStripMenuItem.Enabled =
-			ScrollToMarkerToolStripMenuItem.Enabled =
+				RemoveMarkerToolStripMenuItem.Enabled =
 				MarkerInputRoll.AnyRowsSelected && MarkerView.SelectedRows.First() != 0;
+
+			JumpToMarkerToolStripMenuItem.Enabled =
+				ScrollToMarkerToolStripMenuItem.Enabled =
+				MarkerInputRoll.AnyRowsSelected;
 		}
 
 		private void ScrollToMarkerToolStripMenuItem_Click(object sender, EventArgs e)
@@ -150,10 +144,26 @@ namespace BizHawk.Client.EmuHawk
 			if (MarkerView.AnyRowsSelected)
 			{
 				SelectedMarkers.ForEach(i => Markers.Remove(i));
-				MarkerInputRoll.DeselectAll();
+				ShrinkSelection();
 				Tastudio.RefreshDialog();
 				MarkerView_SelectedIndexChanged(null, null);
 			}
+		}
+
+		// feos: not the same as InputRoll.TruncateSelection(), since multiple selection of markers is forbidden
+		// moreover, when the last marker is removed, we need its selection to move to the previous marker
+		// still iterate, so things don't break if multiple selection is allowed someday
+		public void ShrinkSelection()
+		{
+			if (MarkerView.AnyRowsSelected)
+			{
+				while (MarkerView.SelectedRows.Last() > Markers.Count - 1)
+				{
+					MarkerView.SelectRow(Markers.Count, false);
+					MarkerView.SelectRow(Markers.Count - 1, true);
+				}
+			}
+
 		}
 
 		public void AddMarker(bool editText = false, int? frame = null)
@@ -165,7 +175,7 @@ namespace BizHawk.Client.EmuHawk
 			{
 				var i = new InputPrompt
 				{
-					Text = "Marker for frame " + markerFrame,
+					Text = $"Marker for frame {markerFrame}",
 					TextInputType = InputPrompt.InputType.Text,
 					Message = "Enter a message",
 					InitialValue =
@@ -181,16 +191,31 @@ namespace BizHawk.Client.EmuHawk
 				if (result == DialogResult.OK)
 				{
 					Markers.Add(new TasMovieMarker(markerFrame, i.PromptText));
+					UpdateTextColumnWidth();
 					UpdateValues();
 				}
 			}
 			else
 			{
-				Markers.Add(new TasMovieMarker(markerFrame, ""));
+				Markers.Add(new TasMovieMarker(markerFrame));
 				UpdateValues();
 			}
 
+			MarkerView.ScrollToIndex(Markers.Count - 1);
 			Tastudio.RefreshDialog();
+		}
+
+		public void UpdateTextColumnWidth()
+		{
+			if (Markers.Any())
+			{
+				var longestBranchText = Markers
+					.OrderBy(b => b.Message?.Length ?? 0)
+					.Last()
+					.Message;
+
+				MarkerView.ExpandColumnToFitText("LabelColumn", longestBranchText);
+			}
 		}
 
 		public void EditMarkerPopUp(TasMovieMarker marker, bool followCursor = false)
@@ -199,7 +224,7 @@ namespace BizHawk.Client.EmuHawk
 			var point = default(Point);
 			var i = new InputPrompt
 			{
-				Text = "Marker for frame " + markerFrame,
+				Text = $"Marker for frame {markerFrame}",
 				TextInputType = InputPrompt.InputType.Text,
 				Message = "Enter a message",
 				InitialValue =
@@ -219,6 +244,7 @@ namespace BizHawk.Client.EmuHawk
 			if (result == DialogResult.OK)
 			{
 				marker.Message = i.PromptText;
+				UpdateTextColumnWidth();
 				UpdateValues();
 			}
 		}
@@ -229,39 +255,31 @@ namespace BizHawk.Client.EmuHawk
 			{
 				MarkerView.RowCount = Markers.Count;
 			}
-
-			MarkerView.Refresh();
 		}
 
 		public void Restart()
 		{
-			MarkerView.DeselectAll();
-			UpdateValues();
+			SetupColumns();
+			MarkerView.RowCount = Markers.Count;
+			MarkerView.Refresh();
 		}
 
 		private void MarkerView_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			EditMarkerButton.Enabled =
-			RemoveMarkerButton.Enabled =
-			JumpToMarkerButton.Enabled =
-			ScrollToMarkerButton.Enabled =
+				RemoveMarkerButton.Enabled =
 				MarkerInputRoll.AnyRowsSelected && MarkerView.SelectedRows.First() != 0;
+
+			JumpToMarkerButton.Enabled =
+				ScrollToMarkerButton.Enabled =
+				MarkerInputRoll.AnyRowsSelected;
 		}
 
-		private List<TasMovieMarker> SelectedMarkers
-		{
-			get
-			{
-				return MarkerView.SelectedRows
-					.Select(index => Markers[index])
-					.ToList();
-			}
-		}
-
-		private void MarkerView_ItemActivate(object sender, EventArgs e)
-		{
-			Tastudio.GoToMarker(SelectedMarkers.First());
-		}
+		private List<TasMovieMarker> SelectedMarkers => MarkerView
+			.SelectedRows
+			.Select(index => Markers[index])
+			.ToList();
+		
 
 		// SuuperW: Marker renaming can be done with a right-click.
 		// A much more useful feature would be to easily jump to it.

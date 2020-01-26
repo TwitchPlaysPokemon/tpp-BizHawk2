@@ -1,23 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml.Linq;
 
 using BizHawk.Emulation.Common;
 using BizHawk.Client.Common;
 using BizHawk.Client.EmuHawk.WinFormExtensions;
+using BizHawk.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
-	public partial class MultiDiskBundler : Form, IToolFormAutoConfig
+	public partial class MultiDiskBundler : ToolFormBase, IToolFormAutoConfig
 	{
-		private XElement _currentXml = null;
+		private XElement _currentXml;
 
 		[RequiredService]
 		public IEmulator Emulator { get; set; }
@@ -32,29 +31,28 @@ namespace BizHawk.Client.EmuHawk
 			AddButton_Click(null, null);
 			AddButton_Click(null, null);
 
-			if (!Global.Game.IsNullInstance &&  !GlobalWin.MainForm.CurrentlyOpenRom.EndsWith(".xml"))
+			if (!Global.Game.IsNullInstance() &&  !MainForm.CurrentlyOpenRom.EndsWith(".xml"))
 			{
-				string currentRom = GlobalWin.MainForm.CurrentlyOpenRom;
-				if (GlobalWin.MainForm.CurrentlyOpenRom.Contains("|"))
+				if (MainForm.CurrentlyOpenRom.Contains("|"))
 				{
-					var pieces = GlobalWin.MainForm.CurrentlyOpenRom.Split('|');
+					var pieces = MainForm.CurrentlyOpenRom.Split('|');
 
-					var directory = Path.GetDirectoryName(pieces[0]);
+					var directory = Path.GetDirectoryName(pieces[0]) ?? "";
 					var filename = Path.ChangeExtension(pieces[1], ".xml");
 
 					NameBox.Text = Path.Combine(directory, filename);
 				}
 				else
 				{
-					NameBox.Text = Path.ChangeExtension(GlobalWin.MainForm.CurrentlyOpenRom, ".xml");
+					NameBox.Text = Path.ChangeExtension(MainForm.CurrentlyOpenRom, ".xml");
 				}
 
-				 if (SystemDropDown.Items.Contains(Emulator.SystemId))
-				 {
-					 SystemDropDown.SelectedItem = Emulator.SystemId;
-				 }
+				if (SystemDropDown.Items.Contains(Emulator.SystemId))
+				{
+					SystemDropDown.SelectedItem = Emulator.SystemId;
+				}
 
-				 FileSelectors.First().SetName(GlobalWin.MainForm.CurrentlyOpenRom);
+				FileSelectors.First().Path = MainForm.CurrentlyOpenRom;
 			}
 		}
 
@@ -64,28 +62,19 @@ namespace BizHawk.Client.EmuHawk
 
 		public void UpdateValues()
 		{
-
 		}
 
 		public void FastUpdate()
 		{
-
 		}
 
 		public void Restart()
 		{
-
 		}
 
-		public bool AskSaveChanges()
-		{
-			return true;
-		}
+		public bool AskSaveChanges() => true;
 
-		public bool UpdateBefore
-		{
-			get { return true; }
-		}
+		public bool UpdateBefore => true;
 
 		#endregion
 
@@ -114,7 +103,8 @@ namespace BizHawk.Client.EmuHawk
 				DialogResult = DialogResult.OK;
 				Close();
 
-				GlobalWin.MainForm.LoadRom(fileInfo.FullName, new MainForm.LoadRomArgs() { OpenAdvanced = new OpenAdvanced_OpenRom() });
+				var lra = new MainForm.LoadRomArgs { OpenAdvanced = new OpenAdvanced_OpenRom { Path = fileInfo.FullName } };
+				MainForm.LoadRom(fileInfo.FullName, lra);
 			}
 		}
 
@@ -130,7 +120,7 @@ namespace BizHawk.Client.EmuHawk
 				Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
 			};
 
-			var mdf = new MultiDiskFileSelector
+			var mdf = new MultiDiskFileSelector(this)
 			{
 				Location = UIHelper.Scale(new Point(7, 12)),
 				Width = groupBox.ClientSize.Width - UIHelper.ScaleX(13),
@@ -138,6 +128,8 @@ namespace BizHawk.Client.EmuHawk
 			};
 
 			mdf.NameChanged += FileSelector_NameChanged;
+			mdf.SystemString = SystemDropDown.SelectedText;
+
 
 			groupBox.Controls.Add(mdf);
 
@@ -168,23 +160,16 @@ namespace BizHawk.Client.EmuHawk
 			Recalculate();
 		}
 
-		private IEnumerable<MultiDiskFileSelector> FileSelectors
-		{
-			get
-			{
-				return FileSelectorPanel.Controls
-					.OfType<GroupBox>()
-					.SelectMany(g => g.Controls.OfType<MultiDiskFileSelector>());
-			}
-		}
+		private IEnumerable<MultiDiskFileSelector> FileSelectors =>
+			FileSelectorPanel.Controls
+				.OfType<GroupBox>()
+				.SelectMany(g => g.Controls.OfType<MultiDiskFileSelector>());
 
 		private bool Recalculate()
 		{
 			try
 			{
-				var fileSelectors = FileSelectors.ToList();
-
-				var names = fileSelectors.Select(f => f.GetName());
+				var names = FileSelectors.Select(f => f.Path).ToList();
 
 				var name = NameBox.Text;
 
@@ -193,17 +178,18 @@ namespace BizHawk.Client.EmuHawk
 					throw new Exception("Xml Filename can not be blank");
 				}
 
-				if (names.Any(n => string.IsNullOrWhiteSpace(n)))
+				if (names.Any(string.IsNullOrWhiteSpace))
 				{
 					throw new Exception("Rom Names can not be blank");
 				}
 
-				var system = SystemDropDown.SelectedItem.ToString();
+				var system = SystemDropDown.SelectedItem?.ToString();
 
-				if (system == null)
+				if (string.IsNullOrWhiteSpace(system))
 				{
 					throw new Exception("System Id can not be blank");
 				}
+
 				var basePath = Path.GetDirectoryName(name.Split('|').First());
 
 				if (string.IsNullOrEmpty(basePath))
@@ -234,11 +220,6 @@ namespace BizHawk.Client.EmuHawk
 			}
 		}
 
-		private static string ConvertToTag(string name)
-		{
-			return new Regex("[^A-Za-z0-9]").Replace(name, "");
-		}
-
 		private void NameBox_TextChanged(object sender, EventArgs e)
 		{
 			Recalculate();
@@ -247,9 +228,9 @@ namespace BizHawk.Client.EmuHawk
 		private void BrowseBtn_Click(object sender, EventArgs e)
 		{
 			string filename = "";
-			string initialDirectory = PathManager.MakeAbsolutePath(Global.Config.PathEntries.MultiDiskBundlesFragment, "Global_NULL");
+			string initialDirectory = PathManager.MakeAbsolutePath(Config.PathEntries.MultiDiskBundlesFragment, "Global_NULL");
 
-			if (!Global.Game.IsNullInstance)
+			if (!Global.Game.IsNullInstance())
 			{
 				filename = NameBox.Text;
 				if (string.IsNullOrWhiteSpace(filename))
@@ -260,7 +241,7 @@ namespace BizHawk.Client.EmuHawk
 				initialDirectory = Path.GetDirectoryName(filename);
 			}
 
-			var sfd = new SaveFileDialog
+			using var sfd = new SaveFileDialog
 			{
 				FileName = filename,
 				InitialDirectory = initialDirectory,
@@ -274,41 +255,52 @@ namespace BizHawk.Client.EmuHawk
 			}
 		}
 
-		// http://stackoverflow.com/questions/275689/how-to-get-relative-path-from-absolute-path
+		/// <exception cref="ArgumentException">running on Windows host, and unmanaged call failed</exception>
+		/// <exception cref="FileNotFoundException">running on Windows host, and either path is not a regular file or directory</exception>
+		/// <remarks>Algorithm for Windows taken from https://stackoverflow.com/a/485516/7467292</remarks>
 		public static string GetRelativePath(string fromPath, string toPath)
 		{
-			Win32.FileAttributes fromAttr = GetPathAttribute(fromPath);
-			Win32.FileAttributes toAttr = GetPathAttribute(toPath);
-
-			var path = new StringBuilder(260); // MAX_PATH
-			if (Win32.PathRelativePathTo(
-				path,
-				fromPath,
-				fromAttr,
-				toPath,
-				toAttr) == false)
+			if (OSTailoredCode.IsUnixHost)
 			{
-				throw new ArgumentException("Paths must have a common prefix");
+#if true
+				return PathManager.IsSubfolder(toPath, fromPath)
+					? "./" + OSTailoredCode.SimpleSubshell("realpath", $"--relative-to=\"{toPath}\" \"{fromPath}\"", $"invalid path {fromPath} or missing realpath binary")
+					: fromPath;
+#else // written for Unix port but may be useful for .NET Core
+				// algorithm taken from https://stackoverflow.com/a/340454/7467292
+				var dirSepChar = Path.DirectorySeparatorChar;
+				var fromUri = new Uri(fromPath.EndsWith(dirSepChar.ToString()) ? fromPath : fromPath + dirSepChar);
+				var toUri = new Uri(toPath.EndsWith(dirSepChar.ToString()) ? toPath : toPath + dirSepChar);
+				if (fromUri.Scheme != toUri.Scheme) return toPath;
+
+				var relativePath = Uri.UnescapeDataString(fromUri.MakeRelativeUri(toUri).ToString());
+				return (toUri.Scheme.Equals(Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase)
+					? relativePath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
+					: relativePath
+				).TrimEnd(dirSepChar);
+#endif
 			}
 
-			return path.ToString();
-		}
-
-		private static Win32.FileAttributes GetPathAttribute(string path)
-		{
-			var di = new DirectoryInfo(path.Split('|').First());
-			if (di.Exists)
+			static FileAttributes GetPathAttribute(string path1)
 			{
-				return Win32.FileAttributes.Directory;
-			}
+				var di = new DirectoryInfo(path1.Split('|').First());
+				if (di.Exists)
+				{
+					return FileAttributes.Directory;
+				}
 
-			var fi = new FileInfo(path.Split('|').First());
-			if (fi.Exists)
-			{
-				return Win32.FileAttributes.Normal;
-			}
+				var fi = new FileInfo(path1.Split('|').First());
+				if (fi.Exists)
+				{
+					return FileAttributes.Normal;
+				}
 
-			throw new FileNotFoundException();
+				throw new FileNotFoundException();
+			}
+			var path = new StringBuilder(260 /* = MAX_PATH */);
+			return Win32Imports.PathRelativePathTo(path, fromPath, GetPathAttribute(fromPath), toPath, GetPathAttribute(toPath))
+				? path.ToString()
+				: throw new ArgumentException("Paths must have a common prefix");
 		}
 
 		private void SystemDropDown_SelectedIndexChanged(object sender, EventArgs e)

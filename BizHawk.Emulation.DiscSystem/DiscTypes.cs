@@ -44,8 +44,8 @@ namespace BizHawk.Emulation.DiscSystem
 		/// </summary>
 		public int DecimalValue
 		{
-			get { return (BCDValue & 0xF) + ((BCDValue >> 4) & 0xF) * 10; }
-			set { BCDValue = IntToBCD(value); }
+			get => (BCDValue & 0xF) + ((BCDValue >> 4) & 0xF) * 10;
+			set => BCDValue = IntToBCD(value);
 		}
 
 		/// <summary>
@@ -138,7 +138,7 @@ namespace BizHawk.Emulation.DiscSystem
 			get
 			{
 				if (!Valid) return "--:--:--";
-				return string.Format("{0}{1:D2}:{2:D2}:{3:D2}", Negative ? '-' : '+', MIN, SEC, FRAC);
+				return $"{(Negative ? '-' : '+')}{MIN:D2}:{SEC:D2}:{FRAC:D2}";
 			}
 		}
 

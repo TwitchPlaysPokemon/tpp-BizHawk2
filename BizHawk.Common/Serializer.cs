@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable disable
+
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -14,40 +16,19 @@ namespace BizHawk.Common
 
 		#region Public
 
-		public bool IsReader
-		{
-			get { return _isReader; }
-		}
+		public bool IsReader => _isReader;
 
-		public bool IsWriter
-		{
-			get { return !IsReader; }
-		}
+		public bool IsWriter => !IsReader;
 
-		public bool IsText
-		{
-			get { return _isText; }
-		}
+		public bool IsText => _isText;
 
-		public BinaryReader BinaryReader
-		{
-			get { return _br; }
-		}
+		public BinaryReader BinaryReader => _br;
 
-		public BinaryWriter BinaryWriter
-		{
-			get { return _bw; }
-		}
+		public BinaryWriter BinaryWriter => _bw;
 
-		public TextReader TextReader
-		{
-			get { return _tr; }
-		}
+		public TextReader TextReader => _tr;
 
-		public TextWriter TextWriter
-		{
-			get { return _tw; } 
-		}
+		public TextWriter TextWriter => _tw;
 
 		public Serializer(BinaryWriter bw)
 		{
@@ -118,7 +99,7 @@ namespace BizHawk.Common
 
 		public void BeginSection(string name)
 		{
-			this._sections.Push(name);
+			_sections.Push(name);
 			if (IsText)
 			{
 				if (IsWriter)
@@ -135,7 +116,7 @@ namespace BizHawk.Common
 
 		public void EndSection()
 		{
-			var name = this._sections.Pop();
+			var name = _sections.Pop();
 			if (IsText)
 			{
 				if (IsWriter)
@@ -149,6 +130,7 @@ namespace BizHawk.Common
 			}
 		}
 
+		/// <exception cref="InvalidOperationException"><typeparamref name="T"/> does not inherit <see cref="Enum"/></exception>
 		public void SyncEnum<T>(string name, ref T val) where T : struct
 		{
 			if (typeof(T).BaseType != typeof(Enum))
@@ -202,11 +184,11 @@ namespace BizHawk.Common
 			}
 			else if (IsReader)
 			{
-				val = Util.ReadByteBuffer(_br, useNull);
+				val = _br.ReadByteBuffer(useNull);
 			}
 			else
 			{
-				Util.WriteByteBuffer(_bw, val);
+				_bw.WriteByteBuffer(val);
 			}
 		}
 
@@ -216,7 +198,7 @@ namespace BizHawk.Common
 			{
 				if (Present(name))
 				{
-					val = Util.HexStringToBytes(Item(name));
+					val = Item(name).HexStringToBytes();
 				}
 
 				if (val != null && val.Length == 0 && useNull)
@@ -239,7 +221,7 @@ namespace BizHawk.Common
 			}
 			else if (IsReader)
 			{
-				val = Util.ByteBufferToBoolBuffer(Util.ReadByteBuffer(_br, false));
+				val = _br.ReadByteBuffer(false).ToBoolBuffer();
 				if (val == null && !useNull)
 				{
 					val = new bool[0];
@@ -247,7 +229,7 @@ namespace BizHawk.Common
 			}
 			else
 			{
-				Util.WriteByteBuffer(_bw, Util.BoolBufferToByteBuffer(val));
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
 			}
 		}
 
@@ -257,8 +239,8 @@ namespace BizHawk.Common
 			{
 				if (Present(name))
 				{
-					var bytes = Util.HexStringToBytes(Item(name));
-					val = Util.ByteBufferToBoolBuffer(bytes);
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToBoolBuffer();
 				}
 
 				if (val != null && val.Length == 0 && useNull)
@@ -269,7 +251,7 @@ namespace BizHawk.Common
 			else
 			{
 				var temp = val ?? new bool[0];
-				_tw.WriteLine("{0} {1}", name, Util.BoolBufferToByteBuffer(temp).BytesToHexString());
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
 			}
 		}
 		public void Sync(string name, ref short[] val, bool useNull)
@@ -280,7 +262,7 @@ namespace BizHawk.Common
 			}
 			else if (IsReader)
 			{
-				val = Util.ByteBufferToShortBuffer(Util.ReadByteBuffer(_br, false));
+				val = _br.ReadByteBuffer(false).ToShortBuffer();
 				if (val == null && !useNull)
 				{
 					val = new short[0];
@@ -288,7 +270,7 @@ namespace BizHawk.Common
 			}
 			else
 			{
-				Util.WriteByteBuffer(_bw, Util.ShortBufferToByteBuffer(val));
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
 			}
 		}
 
@@ -300,7 +282,7 @@ namespace BizHawk.Common
 			}
 			else if (IsReader)
 			{
-				val = Util.ByteBufferToUshortBuffer(Util.ReadByteBuffer(_br, false));
+				val = _br.ReadByteBuffer(false).ToUShortBuffer();
 				if (val == null && !useNull)
 				{
 					val = new ushort[0];
@@ -308,7 +290,7 @@ namespace BizHawk.Common
 			}
 			else
 			{
-				Util.WriteByteBuffer(_bw, Util.UshortBufferToByteBuffer(val));
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
 			}
 		}
 
@@ -318,8 +300,8 @@ namespace BizHawk.Common
 			{
 				if (Present(name))
 				{
-					var bytes = Util.HexStringToBytes(Item(name));
-					val = Util.ByteBufferToShortBuffer(bytes);
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToShortBuffer();
 				}
 
 				if (val != null && val.Length == 0 && useNull)
@@ -330,7 +312,7 @@ namespace BizHawk.Common
 			else
 			{
 				var temp = val ?? new short[0];
-				_tw.WriteLine("{0} {1}", name, Util.ShortBufferToByteBuffer(temp).BytesToHexString());
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
 			}
 		}
 
@@ -340,8 +322,8 @@ namespace BizHawk.Common
 			{
 				if (Present(name))
 				{
-					var bytes = Util.HexStringToBytes(Item(name));
-					val = Util.ByteBufferToUshortBuffer(bytes);
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToUShortBuffer();
 				}
 
 				if (val != null && val.Length == 0 && useNull)
@@ -352,7 +334,7 @@ namespace BizHawk.Common
 			else
 			{
 				var temp = val ?? new ushort[0];
-				_tw.WriteLine("{0} {1}", name, Util.UshortBufferToByteBuffer(temp).BytesToHexString());
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
 			}
 		}
 
@@ -364,7 +346,7 @@ namespace BizHawk.Common
 			}
 			else if (IsReader)
 			{
-				val = Util.ByteBufferToIntBuffer(Util.ReadByteBuffer(_br, false));
+				val = _br.ReadByteBuffer(false).ToIntBuffer();
 				if (val == null && !useNull)
 				{
 					val = new int[0];
@@ -372,7 +354,7 @@ namespace BizHawk.Common
 			}
 			else
 			{
-				Util.WriteByteBuffer(_bw, Util.IntBufferToByteBuffer(val));
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
 			}
 		}
 
@@ -382,8 +364,8 @@ namespace BizHawk.Common
 			{
 				if (Present(name))
 				{
-					var bytes = Util.HexStringToBytes(Item(name));
-					val = Util.ByteBufferToIntBuffer(bytes);
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToIntBuffer();
 				}
 
 				if (val != null && val.Length == 0 && useNull)
@@ -394,7 +376,7 @@ namespace BizHawk.Common
 			else
 			{
 				var temp = val ?? new int[0];
-				_tw.WriteLine("{0} {1}", name, Util.IntBufferToByteBuffer(temp).BytesToHexString());
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
 			}
 		}
 
@@ -406,7 +388,7 @@ namespace BizHawk.Common
 			}
 			else if (IsReader)
 			{
-				val = Util.ByteBufferToUintBuffer(Util.ReadByteBuffer(_br, false));
+				val = _br.ReadByteBuffer(false).ToUIntBuffer();
 				if (val == null && !useNull)
 				{
 					val = new uint[0];
@@ -414,7 +396,7 @@ namespace BizHawk.Common
 			}
 			else
 			{
-				Util.WriteByteBuffer(_bw, Util.UintBufferToByteBuffer(val));
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
 			}
 		}
 
@@ -424,8 +406,8 @@ namespace BizHawk.Common
 			{
 				if (Present(name))
 				{
-					var bytes = Util.HexStringToBytes(Item(name));
-					val = Util.ByteBufferToUintBuffer(bytes);
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToUIntBuffer();
 				}
 
 				if (val != null && val.Length == 0 && useNull)
@@ -436,7 +418,91 @@ namespace BizHawk.Common
 			else
 			{
 				var temp = val ?? new uint[0];
-				_tw.WriteLine("{0} {1}", name, Util.UintBufferToByteBuffer(temp).BytesToHexString());
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
+			}
+		}
+
+		public void Sync(string name, ref float[] val, bool useNull)
+		{
+			if (IsText)
+			{
+				SyncText(name, ref val, useNull);
+			}
+			else if (IsReader)
+			{
+				val = _br.ReadByteBuffer(false).ToFloatBuffer();
+				if (val == null && !useNull)
+				{
+					val = new float[0];
+				}
+			}
+			else
+			{
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
+			}
+		}
+
+		public void SyncText(string name, ref float[] val, bool useNull)
+		{
+			if (IsReader)
+			{
+				if (Present(name))
+				{
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToFloatBuffer();
+				}
+
+				if (val != null && val.Length == 0 && useNull)
+				{
+					val = null;
+				}
+			}
+			else
+			{
+				var temp = val ?? new float[0];
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
+			}
+		}
+
+		public void Sync(string name, ref double[] val, bool useNull)
+		{
+			if (IsText)
+			{
+				SyncText(name, ref val, useNull);
+			}
+			else if (IsReader)
+			{
+				val = _br.ReadByteBuffer(false).ToDoubleBuffer();
+				if (val == null && !useNull)
+				{
+					val = new double[0];
+				}
+			}
+			else
+			{
+				_bw.WriteByteBuffer(val.ToUByteBuffer());
+			}
+		}
+
+		public void SyncText(string name, ref double[] val, bool useNull)
+		{
+			if (IsReader)
+			{
+				if (Present(name))
+				{
+					var bytes = Item(name).HexStringToBytes();
+					val = bytes.ToDoubleBuffer();
+				}
+
+				if (val != null && val.Length == 0 && useNull)
+				{
+					val = null;
+				}
+			}
+			else
+			{
+				var temp = val ?? new double[0];
+				_tw.WriteLine("{0} {1}", name, temp.ToUByteBuffer().BytesToHexString());
 			}
 		}
 
@@ -612,6 +678,22 @@ namespace BizHawk.Common
 			}
 		}
 
+		public void Sync(string name, ref double val)
+		{
+			if (IsText)
+			{
+				SyncText(name, ref val);
+			}
+			else if (IsReader)
+			{
+				Read(ref val);
+			}
+			else
+			{
+				Write(ref val);
+			}
+		}
+
 		public void Sync(string name, ref bool val)
 		{
 			if (IsText)
@@ -628,6 +710,7 @@ namespace BizHawk.Common
 			}
 		}
 
+		/// <exception cref="InvalidOperationException"><see cref="IsReader"/> is <see langword="false"/> and <paramref name="name"/> is longer than <paramref name="length"/> chars</exception>
 		public void SyncFixedString(string name, ref string val, int length)
 		{
 			// TODO - this could be made more efficient perhaps just by writing values right out of the string..
@@ -658,7 +741,7 @@ namespace BizHawk.Common
 			{
 				if (name.Length > length)
 				{
-					throw new InvalidOperationException("SyncFixedString too long");
+					throw new InvalidOperationException($"{nameof(SyncFixedString)} too long");
 				}
 
 				var buf = val.ToCharArray();
@@ -740,7 +823,7 @@ namespace BizHawk.Common
 					}
 					else
 					{
-						throw new Exception(string.Format("Duplicate key \"{0}\" in serializer savestate!", name));
+						throw new Exception($"Duplicate key \"{name}\" in serializer savestate!");
 					}
 
 					curs = news;
@@ -763,7 +846,7 @@ namespace BizHawk.Common
 					}
 					else
 					{
-						throw new Exception(string.Format("Duplicate key \"{0}\" in serializer savestate!", key));
+						throw new Exception($"Duplicate key \"{key}\" in serializer savestate!");
 					}
 				}
 			}
@@ -896,6 +979,18 @@ namespace BizHawk.Common
 		}
 
 		private void SyncText(string name, ref float val)
+		{
+			if (IsReader)
+			{
+				ReadText(name, ref val);
+			}
+			else
+			{
+				WriteText(name, ref val);
+			}
+		}
+
+		private void SyncText(string name, ref double val)
 		{
 			if (IsReader)
 			{
@@ -1135,6 +1230,16 @@ namespace BizHawk.Common
 			_bw.Write(val);
 		}
 
+		private void Read(ref double val)
+		{
+			val = _br.ReadDouble();
+		}
+
+		private void Write(ref double val)
+		{
+			_bw.Write(val);
+		}
+
 		private void ReadText(string name, ref float val)
 		{
 			if (Present(name))
@@ -1144,6 +1249,19 @@ namespace BizHawk.Common
 		}
 
 		private void WriteText(string name, ref float val)
+		{
+			_tw.WriteLine("{0} {1}", name, val);
+		}
+
+		private void ReadText(string name, ref double val)
+		{
+			if (Present(name))
+			{
+				val = double.Parse(Item(name));
+			}
+		}
+
+		private void WriteText(string name, ref double val)
 		{
 			_tw.WriteLine("{0} {1}", name, val);
 		}

@@ -13,7 +13,7 @@ using System.IO;
 using System.Collections.Concurrent;
 using System.Threading;
 using BizHawk.Emulation.Common;
-using BizHawk.Common.BizInvoke;
+using BizHawk.BizInvoke;
 
 namespace BizHawk.Emulation.Cores.Waterbox
 {
@@ -27,7 +27,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 		/// <summary>
 		/// executable is loaded here
 		/// </summary>
-		private MemoryBlock _base;
+		private MemoryBlockBase _base;
 		/// <summary>
 		/// standard malloc() heap
 		/// </summary>
@@ -77,14 +77,14 @@ namespace BizHawk.Emulation.Cores.Waterbox
 			long orig_end = loadsegs.Max(s => s.Address + s.Size);
 			if (HasRelocations())
 			{
-				_base = new MemoryBlock((ulong)(orig_end - orig_start));
-				_loadoffset = (long)_base.Start - orig_start;
+				_base = MemoryBlockBase.CallPlatformCtor((ulong)(orig_end - orig_start));
+				_loadoffset = (long) _base.AddressRange.Start - orig_start;
 				Initialize(0);
 			}
 			else
 			{
 				Initialize((ulong)orig_start);
-				_base = new MemoryBlock((ulong)orig_start, (ulong)(orig_end - orig_start));
+				_base = MemoryBlockBase.CallPlatformCtor((ulong)orig_start, (ulong)(orig_end - orig_start));
 				_loadoffset = 0;
 				Enter();
 			}
@@ -94,7 +94,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				_disposeList.Add(_base);
 				AddMemoryBlock(_base, "elf");
 				_base.Activate();
-				_base.Protect(_base.Start, _base.Size, MemoryBlock.Protection.RW);
+				_base.Protect(_base.AddressRange.Start, _base.Size, MemoryBlockBase.Protection.RW);
 
 				foreach (var seg in loadsegs)
 				{
@@ -104,23 +104,23 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				RegisterSymbols();
 				ProcessRelocations();
 
-				_base.Protect(_base.Start, _base.Size, MemoryBlock.Protection.R);
+				_base.Protect(_base.AddressRange.Start, _base.Size, MemoryBlockBase.Protection.R);
 
 				foreach (var sec in _elf.Sections.Where(s => (s.Flags & SectionFlags.Allocatable) != 0))
 				{
 					if ((sec.Flags & SectionFlags.Executable) != 0)
-						_base.Protect((ulong)(sec.LoadAddress + _loadoffset), (ulong)sec.Size, MemoryBlock.Protection.RX);
+						_base.Protect((ulong)(sec.LoadAddress + _loadoffset), (ulong)sec.Size, MemoryBlockBase.Protection.RX);
 					else if ((sec.Flags & SectionFlags.Writable) != 0)
-						_base.Protect((ulong)(sec.LoadAddress + _loadoffset), (ulong)sec.Size, MemoryBlock.Protection.RW);
+						_base.Protect((ulong)(sec.LoadAddress + _loadoffset), (ulong)sec.Size, MemoryBlockBase.Protection.RW);
 				}
 
-				ulong end = _base.End;
+				ulong end = _base.AddressRange.EndInclusive + 1;
 
 				if (heapsize > 0)
 				{
 					_heap = new Heap(GetHeapStart(end), (ulong)heapsize, "sbrk-heap");
 					_heap.Memory.Activate();
-					end = _heap.Memory.End;
+					end = _heap.Memory.AddressRange.EndInclusive + 1;
 					_disposeList.Add(_heap);
 					AddMemoryBlock(_heap.Memory, "sbrk - heap");
 				}
@@ -129,7 +129,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				{
 					_sealedheap = new Heap(GetHeapStart(end), (ulong)sealedheapsize, "sealed-heap");
 					_sealedheap.Memory.Activate();
-					end = _sealedheap.Memory.End;
+					end = _sealedheap.Memory.AddressRange.EndInclusive + 1;
 					_disposeList.Add(_sealedheap);
 					AddMemoryBlock(_sealedheap.Memory, "sealed-heap");
 				}
@@ -138,13 +138,13 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				{
 					_invisibleheap = new Heap(GetHeapStart(end), (ulong)invisibleheapsize, "invisible-heap");
 					_invisibleheap.Memory.Activate();
-					end = _invisibleheap.Memory.End;
+					end = _invisibleheap.Memory.AddressRange.EndInclusive + 1;
 					_disposeList.Add(_invisibleheap);
 					AddMemoryBlock(_invisibleheap.Memory, "invisible-heap");
 				}
 
 				ConnectAllClibPatches();
-				Console.WriteLine("Loaded {0}@{1:X16}", filename, _base.Start);
+				Console.WriteLine($"Loaded {filename}@{_base.AddressRange.Start:X16}");
 				foreach (var sec in _elf.Sections.Where(s => s.LoadAddress != 0))
 				{
 					Console.WriteLine("  {0}@{1:X16}, size {2}", sec.Name.PadLeft(20), sec.LoadAddress + _loadoffset, sec.Size.ToString().PadLeft(12));
@@ -170,7 +170,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				.Where(s => s.PointedSection != null && (s.PointedSection.Flags & SectionFlags.Writable) != 0)
 				.OrderByDescending(s => s.Size)
 				.Take(30)
-				.Select(s => string.Format("{0} size {1}", s.Name, s.Size)))
+				.Select(s => $"{s.Name} size {s.Size}"))
 			{
 				Console.WriteLine(text);
 			}
@@ -253,17 +253,15 @@ namespace BizHawk.Emulation.Cores.Waterbox
 
 		private void RegisterSymbols()
 		{
-			var symbols = ((ISymbolTable)_elf.GetSection(".symtab"))
-			.Entries
-			.Cast<SymbolEntry<long>>();
+			_symlist = ((ISymbolTable) _elf.GetSection(".symtab")).Entries
+				.Cast<SymbolEntry<long>>()
+				.ToList();
 
 			// when there are duplicate names, don't register either in the dictionary
-			_symdict = symbols
-			.GroupBy(e => e.Name)
-			.Where(g => g.Count() == 1)
-			.ToDictionary(g => g.Key, g => g.First());
-
-			_symlist = symbols.ToList();
+			_symdict = _symlist
+				.GroupBy(e => e.Name)
+				.Where(g => g.Count() == 1)
+				.ToDictionary(g => g.Key, g => g.First());
 		}
 
 		public void Seal()
@@ -392,18 +390,9 @@ namespace BizHawk.Emulation.Cores.Waterbox
 
 		#endregion
 
-		public IntPtr Resolve(string entryPoint)
-		{
-			SymbolEntry<long> sym;
-			if (_symdict.TryGetValue(entryPoint, out sym))
-			{
-				return Z.SS(sym.Value + _loadoffset);
-			}
-			else
-			{
-				return IntPtr.Zero;
-			}
-		}
+		public IntPtr? GetProcAddrOrNull(string entryPoint) => _symdict.TryGetValue(entryPoint, out var sym) ? Z.SS(sym.Value + _loadoffset) : (IntPtr?) null;
+
+		public IntPtr GetProcAddrOrThrow(string entryPoint) => GetProcAddrOrNull(entryPoint) ?? throw new InvalidOperationException($"could not find {entryPoint} in exports");
 
 		#region state
 

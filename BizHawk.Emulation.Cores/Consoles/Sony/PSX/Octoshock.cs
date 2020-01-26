@@ -16,10 +16,13 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text;
+
 using Newtonsoft.Json;
 
 using BizHawk.Emulation.Common;
 using BizHawk.Common;
+using BizHawk.Emulation.DiscSystem;
 
 #pragma warning disable 649 //adelikat: Disable dumb warnings until this file is complete
 
@@ -217,9 +220,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 
 		public static ControllerDefinition CreateControllerDefinition(SyncSettings syncSettings)
 		{
-			ControllerDefinition definition = new ControllerDefinition();
-			definition.Name = "PSX DualShock Controller"; // <-- for compatibility
-														  //ControllerDefinition.Name = "PSX FrontIO"; // TODO - later rename to this, I guess, so it's less misleading. don't want to wreck keybindings yet.
+			var definition = new ControllerDefinition { Name = "PSX Front Panel" };
 
 			var cfg = syncSettings.FIOConfig.ToLogical();
 
@@ -458,6 +459,22 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 		{
 		}
 
+		public string CalculateDiscHashes()
+		{
+			var sb = new StringBuilder();
+			try
+			{
+				foreach (var disc in Discs)
+				{
+					sb.Append($"{new DiscHasher(disc).Calculate_PSX_RedumpHash():X8} {disc.Name}\r\n");
+				}
+			}
+			catch
+			{
+				// ignored
+			}
+			return sb.ToString();
+		}
 
 		public void ResetCounters()
 		{
@@ -743,7 +760,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 
 		private IController _controller;
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound)
+		public bool FrameAdvance(IController controller, bool render, bool rendersound)
 		{
 			_controller = controller;
 			FrameAdvance_PrepDiscState();
@@ -801,7 +818,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 				LagCount++;
 
 			//what happens to sound in this case?
-			if (render == false) return;
+			if (render == false) return true;
 
 			OctoshockDll.ShockFramebufferInfo fb = new OctoshockDll.ShockFramebufferInfo();
 
@@ -840,9 +857,11 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 			fixed (short* samples = sbuff)
 			{
 				sbuffcontains = OctoshockDll.shock_GetSamples(psx, null);
-				if (sbuffcontains * 2 > sbuff.Length) throw new InvalidOperationException("shock_GetSamples returned too many samples: " + sbuffcontains);
+				if (sbuffcontains * 2 > sbuff.Length) throw new InvalidOperationException($"{nameof(OctoshockDll.shock_GetSamples)} returned too many samples: {sbuffcontains}");
 				OctoshockDll.shock_GetSamples(psx, samples);
 			}
+
+			return true;
 		}
 
 		public ControllerDefinition ControllerDefinition { get; private set; }
@@ -878,18 +897,20 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 
 		void ShockMemCallback(uint address, OctoshockDll.eShockMemCb type, uint size, uint value)
 		{
+			MemoryCallbackFlags flags = 0;
 			switch (type)
 			{
-				case OctoshockDll.eShockMemCb.Read: 
-					MemoryCallbacks.CallReads(address);
+				case OctoshockDll.eShockMemCb.Read:
+					flags |= MemoryCallbackFlags.AccessRead;
 					break;
 				case OctoshockDll.eShockMemCb.Write:
-					MemoryCallbacks.CallWrites(address);
+					flags |= MemoryCallbackFlags.AccessWrite;
 					break;
 				case OctoshockDll.eShockMemCb.Execute:
-					MemoryCallbacks.CallExecutes(address);
+					flags |= MemoryCallbackFlags.AccessExecute;
 					break;
 			}
+			MemoryCallbacks.CallMemoryCallbacks(address, value, (uint)flags, "System Bus");
 		}
 
 		void InitMemCallbacks()
@@ -1074,7 +1095,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 			};
 			int result = OctoshockDll.shock_StateTransaction(psx, ref transaction);
 			if (result != OctoshockDll.SHOCK_OK)
-				throw new InvalidOperationException("eShockStateTransaction.TextSave returned error!");
+				throw new InvalidOperationException($"{nameof(OctoshockDll.eShockStateTransaction)}.{nameof(OctoshockDll.eShockStateTransaction.TextSave)} returned error!");
 
 			s.ExtraData.IsLagFrame = IsLagFrame;
 			s.ExtraData.LagCount = LagCount;
@@ -1097,7 +1118,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 
 			int result = OctoshockDll.shock_StateTransaction(psx, ref transaction);
 			if (result != OctoshockDll.SHOCK_OK)
-				throw new InvalidOperationException("eShockStateTransaction.TextLoad returned error!");
+				throw new InvalidOperationException($"{nameof(OctoshockDll.eShockStateTransaction)}.{nameof(OctoshockDll.eShockStateTransaction.TextLoad)} returned error!");
 
 			IsLagFrame = s.ExtraData.IsLagFrame;
 			LagCount = s.ExtraData.LagCount;
@@ -1132,7 +1153,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 
 				int result = OctoshockDll.shock_StateTransaction(psx, ref transaction);
 				if (result != OctoshockDll.SHOCK_OK)
-					throw new InvalidOperationException("eShockStateTransaction.BinarySave returned error!");
+					throw new InvalidOperationException($"{nameof(OctoshockDll.eShockStateTransaction)}.{nameof(OctoshockDll.eShockStateTransaction.BinarySave)} returned error!");
 				writer.Write(savebuff.Length);
 				writer.Write(savebuff);
 
@@ -1162,7 +1183,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 				reader.Read(savebuff, 0, length);
 				int ret = OctoshockDll.shock_StateTransaction(psx, ref transaction);
 				if (ret != OctoshockDll.SHOCK_OK)
-					throw new InvalidOperationException("eShockStateTransaction.BinaryLoad returned error!");
+					throw new InvalidOperationException($"{nameof(OctoshockDll.eShockStateTransaction)}.{nameof(OctoshockDll.eShockStateTransaction.BinaryLoad)} returned error!");
 
 				// other variables
 				IsLagFrame = reader.ReadBoolean();
@@ -1177,8 +1198,8 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 		public byte[] SaveStateBinary()
 		{
 			//this are objectionable shenanigans, but theyre required to get the extra info in the stream. we need a better approach.
-			var ms = new MemoryStream(savebuff2, true);
-			var bw = new BinaryWriter(ms);
+			using var ms = new MemoryStream(savebuff2, true);
+			using var bw = new BinaryWriter(ms);
 			SaveStateBinary(bw);
 			bw.Flush();
 			if (ms.Position != savebuff2.Length)
@@ -1187,10 +1208,7 @@ namespace BizHawk.Emulation.Cores.Sony.PSX
 			return savebuff2;
 		}
 
-		public bool BinarySaveStatesPreferred
-		{
-			get { return true; }
-		}
+		public bool BinarySaveStatesPreferred => true;
 
 		#endregion
 

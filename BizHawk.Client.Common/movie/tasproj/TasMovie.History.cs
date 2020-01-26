@@ -8,7 +8,6 @@ namespace BizHawk.Client.Common
 	{
 		public TasMovieChangeLog(TasMovie movie)
 		{
-			_history = new List<List<IMovieAction>>();
 			_movie = movie;
 		}
 
@@ -24,11 +23,7 @@ namespace BizHawk.Client.Common
 
 		public int MaxSteps
 		{
-			get
-			{
-				return _maxSteps;
-			}
-
+			get => _maxSteps;
 			set
 			{
 				_maxSteps = value;
@@ -273,7 +268,7 @@ namespace BizHawk.Client.Common
 
 			if (name == "")
 			{
-				name = "Undo step " + _totalSteps;
+				name = $"Undo step {_totalSteps}";
 			}
 
 			bool ret = false;
@@ -347,14 +342,9 @@ namespace BizHawk.Client.Common
 		{
 			if (IsRecording || force)
 			{
-				if (oldPosition == -1)
-				{
-					name = "Set Marker at frame " + newMarker.Frame;
-				}
-				else
-				{
-					name = "Remove Marker at frame " + oldPosition;
-				}
+				name = oldPosition == -1
+					? $"Set Marker at frame {newMarker.Frame}"
+					: $"Remove Marker at frame {oldPosition}";
 
 				AddMovieAction(name);
 				_history.Last().Add(new MovieActionMarker(newMarker, oldPosition, oldMessage));
@@ -426,7 +416,6 @@ namespace BizHawk.Client.Common
 		public void Undo(TasMovie movie)
 		{
 			bool wasRecording = movie.ChangeLog.IsRecording;
-			bool wasBinding = movie.BindMarkersToInput;
 			movie.ChangeLog.IsRecording = false;
 			movie.BindMarkersToInput = _bindMarkers;
 
@@ -452,7 +441,6 @@ namespace BizHawk.Client.Common
 		public void Redo(TasMovie movie)
 		{
 			bool wasRecording = movie.ChangeLog.IsRecording;
-			bool wasBinding = movie.BindMarkersToInput;
 			movie.ChangeLog.IsRecording = false;
 			movie.BindMarkersToInput = _bindMarkers;
 

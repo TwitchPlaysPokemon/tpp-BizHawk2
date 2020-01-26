@@ -1,10 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
 namespace BizHawk.Client.DiscoHawk
@@ -14,7 +8,7 @@ namespace BizHawk.Client.DiscoHawk
 		public About()
 		{
 			InitializeComponent();
-			lblVersion.Text = "v" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			lblVersion.Text = $"v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}";
 		}
 
 		private void richTextBox1_LinkClicked(object sender, LinkClickedEventArgs e)

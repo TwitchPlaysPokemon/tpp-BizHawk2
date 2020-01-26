@@ -14,9 +14,11 @@ namespace BizHawk.Emulation.Cores.Computers.AppleII
 
 		public bool DeterministicEmulation => true;
 
-		public void FrameAdvance(IController controller, bool render, bool rendersound)
+		public bool FrameAdvance(IController controller, bool render, bool renderSound)
 		{
-			FrameAdv(controller, render, rendersound);
+			FrameAdv(controller, render, renderSound);
+
+			return true;
 		}
 
 		public void ResetCounters()

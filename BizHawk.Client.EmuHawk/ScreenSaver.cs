@@ -1,47 +1,60 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using BizHawk.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
-	// Derived from http://www.codeproject.com/KB/cs/ScreenSaverControl.aspx
+	/// <remarks>Derived from http://www.codeproject.com/KB/cs/ScreenSaverControl.aspx</remarks>
 	public static class ScreenSaver
 	{
-		[DllImport("user32.dll", CharSet = CharSet.Auto)]
-		private static extern bool SystemParametersInfo(int uAction, int uParam, ref int lpvParam, int flags);
-
-		private const int SPI_GETSCREENSAVERTIMEOUT = 14;
-		private const int SPI_SETSCREENSAVERTIMEOUT = 15;
-		private const int SPIF_SENDWININICHANGE = 2;
-
-		public static void ResetTimerImmediate()
+		private interface IScreenBlankTimer
 		{
-			SetScreenSaverTimeout(GetScreenSaverTimeout());
+			/// <summary>
+			/// The screen saver timeout setting, in seconds
+			/// </summary>
+			int Duration { get; set; }
 		}
 
-		private static int ctr;
-		public static void ResetTimerPeriodically()
+		private class Win32ScreenBlankTimer : IScreenBlankTimer
 		{
-			ctr++;
-			if (ctr == 120)
+			public int Duration
 			{
-				SetScreenSaverTimeout(GetScreenSaverTimeout());
-				ctr = 0;
+				get
+				{
+					const int SPI_GETSCREENSAVERTIMEOUT = 14;
+					int value = default;
+					Win32Imports.SystemParametersInfo(SPI_GETSCREENSAVERTIMEOUT, 0, ref value, 0);
+					return value;
+				}
+				set
+				{
+					const int SPI_SETSCREENSAVERTIMEOUT = 15;
+					const int SPIF_SENDWININICHANGE = 2;
+					int nullVar = default;
+					Win32Imports.SystemParametersInfo(SPI_SETSCREENSAVERTIMEOUT, value, ref nullVar, SPIF_SENDWININICHANGE);
+				}
 			}
 		}
 
-		// Returns the screen saver timeout setting, in seconds
-		private static Int32 GetScreenSaverTimeout()
+		private class UnixScreenBlankTimer : IScreenBlankTimer
 		{
-			Int32 value = 0;
-			SystemParametersInfo(SPI_GETSCREENSAVERTIMEOUT, 0, ref value, 0);
-			return value;
+			public int Duration { get; set; } = 0; //TODO implementation
 		}
 
-		// Pass in the number of seconds to set the screen saver timeout value.
-		private static void SetScreenSaverTimeout(Int32 Value)
+		private static readonly IScreenBlankTimer _screenBlankTimer = OSTailoredCode.IsUnixHost
+			? (IScreenBlankTimer) new UnixScreenBlankTimer()
+			: new Win32ScreenBlankTimer();
+
+		private static int ctr;
+
+		public static void ResetTimerImmediate()
 		{
-			int nullVar = 0;
-			SystemParametersInfo(SPI_SETSCREENSAVERTIMEOUT, Value, ref nullVar, SPIF_SENDWININICHANGE);
+			_screenBlankTimer.Duration = _screenBlankTimer.Duration;
+		}
+
+		public static void ResetTimerPeriodically()
+		{
+			if (++ctr < 120) return;
+			ctr = 0;
+			ResetTimerImmediate();
 		}
 	}
 }

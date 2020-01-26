@@ -54,7 +54,7 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 			}
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem();
+		public IMemoryCallbackSystem MemoryCallbacks { get; } = new MemoryCallbackSystem(new[] { "System Bus" });
 
 		public bool CanStep(StepType type)
 		{
@@ -67,9 +67,6 @@ namespace BizHawk.Emulation.Cores.Atari.A7800Hawk
 			throw new NotImplementedException();
 		}
 
-		public int TotalExecutedCycles
-		{
-			get { return cpu.TotalExecutedCycles; }
-		}
+		public long TotalExecutedCycles => cpu.TotalExecutedCycles;
 	}
 }

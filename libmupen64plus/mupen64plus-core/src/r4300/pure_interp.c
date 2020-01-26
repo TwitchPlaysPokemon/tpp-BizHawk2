@@ -373,7 +373,12 @@ static cpu_instruction_table pure_interpreter_table = {
 
    SYSCALL,
 
+   TGE,
+   TGEU,
+   TLT,
+   TLTU,
    TEQ,
+   TNE,
 
    NOP,
    RESERVED,
@@ -394,7 +399,6 @@ static void prefetch(void)
    else
    {
       DebugMessage(M64MSG_ERROR, "prefetch() execute address :%x", PC->addr);
-      stop=1;
    }
 }
 
