@@ -68,13 +68,13 @@ namespace BizHawk.Emulation.Common
 
 		private static void Call(ObservableCollection<IMemoryCallback> cbs, uint addr, uint value, uint flags, string scope)
 		{
-			foreach (var cb in cbs)
+			cbs.ToList().ForEach(cb =>
 			{
 				if (!cb.Address.HasValue || (cb.Scope == scope && cb.Address == (addr & cb.AddressMask)))
 				{
 					cb.Callback(addr, value, flags);
 				}
-			}
+			});
 		}
 
 		public void CallMemoryCallbacks(uint addr, uint value, uint flags, string scope)
@@ -86,7 +86,7 @@ namespace BizHawk.Emulation.Common
 
 			if (HasReads)
 			{
-				if ((flags & (uint) MemoryCallbackFlags.AccessRead) != 0)
+				if ((flags & (uint)MemoryCallbackFlags.AccessRead) != 0)
 				{
 					Call(_reads, addr, value, flags, scope);
 				}
@@ -94,7 +94,7 @@ namespace BizHawk.Emulation.Common
 
 			if (HasWrites)
 			{
-				if ((flags & (uint) MemoryCallbackFlags.AccessWrite) != 0)
+				if ((flags & (uint)MemoryCallbackFlags.AccessWrite) != 0)
 				{
 					Call(_writes, addr, value, flags, scope);
 				}
@@ -102,7 +102,7 @@ namespace BizHawk.Emulation.Common
 
 			if (HasExecutes)
 			{
-				if ((flags & (uint) MemoryCallbackFlags.AccessExecute) != 0)
+				if ((flags & (uint)MemoryCallbackFlags.AccessExecute) != 0)
 				{
 					Call(_execs, addr, value, flags, scope);
 				}
