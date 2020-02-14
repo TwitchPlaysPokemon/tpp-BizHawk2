@@ -103,7 +103,7 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			if (outputs == null)
+			if (outputs == null || outputs.Length < 1)
 			{
 				GlobalWin.Tools.LuaConsole.WriteToOutputWindow($"(no return){terminator}");
 				return;
