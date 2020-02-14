@@ -45,7 +45,9 @@ namespace BizHawk.Client.Common
 		public void Set(LuaTable buttons, int? controller = null)
 		{
 			var dict = new Dictionary<string, bool>();
-			foreach (var k in buttons.Keys) dict[k.ToString()] = (bool) buttons[k];
+			foreach (var k in buttons.Keys)
+				if (buttons[k] as bool? != null)
+					dict[k.ToString()] = (bool)buttons[k];
 			APIs.Joypad.Set(dict, controller);
 		}
 
@@ -54,7 +56,9 @@ namespace BizHawk.Client.Common
 		public void SetAnalog(LuaTable controls, object controller = null)
 		{
 			var dict = new Dictionary<string, float>();
-			foreach (var k in controls.Keys) dict[k.ToString()] = (float) controls[k];
+			foreach (var k in controls.Keys)
+				if (controls[k] as float? != null)
+					dict[k.ToString()] = (float)controls[k];
 			APIs.Joypad.SetAnalog(dict, controller);
 		}
 	}
