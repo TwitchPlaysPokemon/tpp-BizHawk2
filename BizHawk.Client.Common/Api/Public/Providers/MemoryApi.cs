@@ -23,6 +23,9 @@ namespace BizHawk.Client.Common.Api.Public
 
 		[OptionalService]
 		private IMemoryDomains MemoryDomainCore { get; set; }
+
+		[OptionalService]
+		private IMemoryDomains Domains { get; set; }
 		#endregion
 
 		private AddressResolver resolver = new AddressResolver();
@@ -126,12 +129,12 @@ namespace BizHawk.Client.Common.Api.Public
 		// Disassemble
 		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, string, string> innerCall) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), domain);
 		// MemoryEvents
-		private Func<IEnumerable<string>, string, string> WrapMemoryEvent(MemoryCallbackType type, Func<MemoryCallbackType, string, uint, uint, string, uint, string, string> innerCall)
+		private Func<IEnumerable<string>, string, string> WrapMemoryEvent(MemoryCallbackType type, Func<MemoryCallbackType, string, uint, uint, string, uint?, uint, string, string> innerCall)
 			=> (IEnumerable<string> args, string domain)
-			=> innerCall(type, string.Join("/", args.Skip(2)), (uint)GetAddr(args, CurrentDomain.Name), (uint)GetLength(args), domain, 0, domain);
-		private Func<IEnumerable<string>, string, string> WrapConditionalMemoryEvent(MemoryCallbackType type, Func<MemoryCallbackType, string, uint, uint, string, uint, string, string> innerCall)
+			=> innerCall(type, string.Join("/", args.Skip(2)), (uint)GetAddr(args, CurrentDomain.Name), (uint)GetLength(args), domain, null, 0, null);
+		private Func<IEnumerable<string>, string, string> WrapConditionalMemoryEvent(MemoryCallbackType type, Func<MemoryCallbackType, string, uint, uint, string, uint?, uint, string, string> innerCall)
 			=> (IEnumerable<string> args, string domain)
-			=> innerCall(type, string.Join("/", args.Skip(4)), (uint)GetAddr(args, CurrentDomain.Name), (uint)GetLength(args), domain, (uint)GetValue(args, 3), domain);
+			=> innerCall(type, string.Join("/", args.Skip(4)), (uint)GetAddr(args, CurrentDomain.Name), (uint)GetLength(args), domain, (uint)GetAddr(args, CurrentDomain.Name, 2), (uint)GetValue(args, 3), null);
 		// ReadRangeMultiple
 		private Func<IEnumerable<string>, string, string> WrapMultiMemoryCall(Func<int, int, string, byte[]> innerCall) => (IEnumerable<string> args, string domain) => string.Join("",
 			//Enumerable.Zip(args, args.Skip(1), (addr, len) => new string[] { addr, len })
@@ -190,35 +193,41 @@ namespace BizHawk.Client.Common.Api.Public
 			return $"{d}\t({byteLength} bytes)";
 		}
 
-		private string SetMemoryEvent(MemoryCallbackType type, string callback, uint address, uint bytes, string name, uint checkValue = 0, string domain = "System Bus")
+		private string SetMemoryEvent(MemoryCallbackType type, string callback, uint address, uint bytes, string name, uint? checkAddress = null, uint checkValue = 0, string  domain = "System Bus")
 		{
+			domain = NormalizeDomain(domain);
 			try
 			{
-				if (
-					DebuggableCore != null
-					&& DebuggableCore.MemoryCallbacksAvailable()
-					&& (type != MemoryCallbackType.Execute || DebuggableCore.MemoryCallbacks.ExecuteCallbacksAvailable)
-					)
+				if (DebuggableCore?.MemoryCallbacksAvailable() == true
+					&& (type != MemoryCallbackType.Execute || DebuggableCore.MemoryCallbacks.ExecuteCallbacksAvailable))
 				{
 					name = name ?? callback;
-					uint mask = 0;
-					for (var i = 0; i < bytes; i++)
-						mask |= (uint)(0xFF << (i * 8));
-
-					HttpClient client = new HttpClient();
-					DebuggableCore.MemoryCallbacks.Add(new MemoryCallback(domain, type, name, (uint address, uint value, uint flags) =>
+					if (!HasDomain(domain))
 					{
-						if (value == checkValue)
+						throw new ApiError($"{Emulator.Attributes().CoreName} does not support memory callbacks on the domain {domain}");
+					}
+					HttpClient client = new HttpClient();
+					DebuggableCore.MemoryCallbacks.Add(new MemoryCallback(
+						domain,
+						MemoryCallbackType.Execute,
+						name,
+						(uint address, uint value, uint flags) =>
 						{
-							try
+							if (checkAddress != null && ReadUnsignedByte((int)checkAddress, domain) == checkValue)
 							{
-								client.GetAsync(callback).Result.ToString();
+								try
+								{
+									client.GetAsync(callback).Result.ToString();
+								}
+								catch { }
 							}
-							catch { }
-						}
-					}, address, mask));
+						},
+						address,
+						null
+					));
 					return name;
 				}
+				// fall through
 			}
 			catch (NotImplementedException) { }
 			if (type == MemoryCallbackType.Execute)
@@ -331,5 +340,26 @@ namespace BizHawk.Client.Common.Api.Public
 		private void WriteSignedLittle(int addr, int v, int size, string domain = null) => WriteUnsignedLittle(addr, (uint)v, size, domain);
 
 		private void WriteSignedBig(int addr, int v, int size, string domain = null) => WriteUnsignedBig(addr, (uint)v, size, domain);
+
+		private string NormalizeDomain(string scope)
+		{
+			if (string.IsNullOrWhiteSpace(scope))
+			{
+				if (Domains != null && Domains.HasSystemBus)
+				{
+					scope = Domains.SystemBus.Name;
+				}
+				else
+				{
+					scope = DebuggableCore.MemoryCallbacks.AvailableScopes.First();
+				}
+			}
+
+			return scope;
+		}
+		private bool HasDomain(string scope)
+		{
+			return string.IsNullOrWhiteSpace(scope) || DebuggableCore.MemoryCallbacks.AvailableScopes.Contains(scope);
+		}
 	}
 }
