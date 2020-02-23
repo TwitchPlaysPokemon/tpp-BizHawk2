@@ -112,6 +112,9 @@ namespace BizHawk.Client.EmuHawk
 
 			page.UnlockBits(bmp);
 
+			System.IO.Directory.CreateDirectory($"{System.IO.Directory.GetCurrentDirectory()}\\GBPrinter\\");
+			page.Save($"{System.IO.Directory.GetCurrentDirectory()}\\GBPrinter\\GBPrinter-{DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssZ")}.png", ImageFormat.Png);
+
 			// add it to the bottom of the history
 			int oldHeight = _printerHistory.Height;
 			ResizeHistory(_printerHistory.Height + page.Height + topMargin + bottomMargin);
