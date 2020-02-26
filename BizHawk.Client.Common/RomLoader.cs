@@ -153,12 +153,12 @@ namespace BizHawk.Client.Common
 		// May want to phase out this method in favor of the overload with more paramaters
 		private void DoLoadErrorCallback(string message, string systemId, LoadErrorType type = LoadErrorType.Unknown)
 		{
-			OnLoadError?.Invoke(this, new RomErrorArgs(message, systemId, type));
+			//OnLoadError?.Invoke(this, new RomErrorArgs(message, systemId, type));
 		}
 
 		private void DoLoadErrorCallback(string message, string systemId, string path, bool det, LoadErrorType type = LoadErrorType.Unknown)
 		{
-			OnLoadError?.Invoke(this, new RomErrorArgs(message, systemId, path, det, type));
+			//OnLoadError?.Invoke(this, new RomErrorArgs(message, systemId, path, det, type));
 		}
 
 		private bool PreferredPlatformIsDefined(string extension)
