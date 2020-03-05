@@ -72,7 +72,11 @@ namespace BizHawk.Emulation.Common
 			{
 				if (!cb.Address.HasValue || (cb.Scope == scope && cb.Address == (addr & cb.AddressMask)))
 				{
-					cb.Callback(addr, value, flags);
+					try
+					{
+						cb.Callback(addr, value, flags);
+					}
+					catch { }
 				}
 			});
 		}
