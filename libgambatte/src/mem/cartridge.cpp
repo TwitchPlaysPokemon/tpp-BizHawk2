@@ -272,13 +272,15 @@ public:
 };
 
 class Mbc3 : public DefaultMbc {
+	//added Dabomstew's MBC30 fix https://github.com/pokemon-speedrunning/gambatte-speedrun/commit/b72accc10321396b33522681c44532367941f289
 public:
-	Mbc3(MemPtrs &memptrs, Rtc *const rtc)
+	Mbc3(MemPtrs &memptrs, Rtc *const rtc, bool mbc30)
 	: memptrs_(memptrs)
 	, rtc_(rtc)
 	, rombank_(1)
 	, rambank_(0)
 	, enableRam_(false)
+	, mbc30_(mbc30)
 	{
 	}
 
@@ -289,11 +291,15 @@ public:
 			setRambank();
 			break;
 		case 1:
-			rombank_ = data & 0x7F;
+			rombank_ = data;
+			if (!mbc30_)
+				rombank_ = rombank_ & 0x7F;
 			setRombank();
 			break;
 		case 2:
 			rambank_ = data;
+			if (!mbc30_)
+				rambank_ = rambank_ & 0x03;
 			setRambank();
 			break;
 		case 3:
@@ -318,6 +324,7 @@ private:
 	unsigned char rombank_;
 	unsigned char rambank_;
 	bool enableRam_;
+	bool mbc30_;
 
 	void setRambank() const {
 		unsigned flags = enableRam_ ? MemPtrs::read_en | MemPtrs::write_en : 0;
@@ -333,7 +340,7 @@ private:
 	}
 
 	void setRombank() const {
-		memptrs_.setRombank(std::max(rombank_ & (rombanks(memptrs_) - 1), 1u));
+		memptrs_.setRombank(std::max((unsigned)rombank_, 1u) & (rombanks(memptrs_) - 1));
 	}
 
 public:
@@ -616,6 +623,8 @@ LoadRes Cartridge::loadROM(char const *romfiledata, unsigned romfilelength, bool
 	memptrs_.reset(rombanks, rambanks, cgb ? 8 : 2);
 	rtc_.set(false, 0);
 
+	bool mbc30 = rombanks > 0x80 || rambanks > 0x04;
+
 	std::memcpy(memptrs_.romdata(), romfiledata, (filesize / 0x4000) * 0x4000ul);
 	std::memset(memptrs_.romdata() + filesize / 0x4000 * 0x4000ul,
 	            0xFF,
@@ -633,7 +642,7 @@ LoadRes Cartridge::loadROM(char const *romfiledata, unsigned romfilelength, bool
 		break;
 	case type_mbc2: mbc_.reset(new Mbc2(memptrs_)); break;
 	case type_mbc3:
-		mbc_.reset(new Mbc3(memptrs_, hasRtc(memptrs_.romdata()[0x147]) ? &rtc_ : 0));
+		mbc_.reset(new Mbc3(memptrs_, hasRtc(memptrs_.romdata()[0x147]) ? &rtc_ : 0, mbc30));
 		break;
 	case type_mbc5: mbc_.reset(new Mbc5(memptrs_)); break;
 	case type_huc1: mbc_.reset(new HuC1(memptrs_)); break;
