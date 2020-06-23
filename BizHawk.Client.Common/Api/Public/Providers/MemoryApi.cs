@@ -51,6 +51,10 @@ namespace BizHawk.Client.Common.Api.Public
 			constructedCommands.Add(new ApiCommand("ReadByteRange", WrapMultiMemoryCall(ReadRegion), DocParams.ReadRange, "Reads Length bytes of memory starting at Address"));
 			constructedCommands.Add(new ApiCommand("WriteByteRange", WrapMemoryCall(WriteRegion), DocParams.WriteRange, "Writes Data to memory starting at Address"));
 
+			constructedCommands.Add(new ApiCommand("CheckFlag", WrapMemoryCall((a, f, d) => CheckFlag(a, f, d)), DocParams.FlagsParams, "Checks the value of Flag in flags starting at Address"));
+			constructedCommands.Add(new ApiCommand("SetFlag", WrapMemoryCall((a, f, d) => SetFlag(a, f, d)), DocParams.FlagsParams, "Sets the Flag in flags starting at Address"));
+			constructedCommands.Add(new ApiCommand("ClearFlag", WrapMemoryCall((a, f, d) => ClearFlag(a, f, d)), DocParams.FlagsParams, "Clears the Flag in flags starting at Address"));
+
 			constructedCommands.Add(new ApiCommand("HashByteRange", WrapMemoryCall(HashRegion), DocParams.ReadRange, "Calculates the SHA256 hash of Length bytes of memory starting at Address"));
 
 			constructedCommands.Add(new ApiCommand("Disassemble", WrapMemoryCall((a, d) => Disassemble((uint)a, d)), DocParams.ReadParams, "Generates a disassembly of the instruction at Address"));
@@ -74,6 +78,7 @@ namespace BizHawk.Client.Common.Api.Public
 			public static ApiParameter Address = new ApiParameter("Address", "address");
 			public static ApiParameter Value = new ApiParameter("Value");
 			public static ApiParameter Length = new ApiParameter("Length");
+			public static ApiParameter Flag = new ApiParameter("Flag");
 			public static ApiParameter Domain = new ApiParameter("Domain", "string", true, true);
 			public static ApiParameter Data = new ApiParameter("Data", "bytes");
 			public static ApiParameter Callback = new ApiParameter("CallbackUrl", "url");
@@ -81,6 +86,7 @@ namespace BizHawk.Client.Common.Api.Public
 
 			public static List<ApiParameter> ReadParams = new List<ApiParameter>() { Domain, Address };
 			public static List<ApiParameter> WriteParams = new List<ApiParameter>() { Domain, Address, Value };
+			public static List<ApiParameter> FlagsParams = new List<ApiParameter>() { Domain, Address, Flag };
 			public static List<ApiParameter> ReadRange = new List<ApiParameter>() { Domain, Address, Length };
 			public static List<ApiParameter> WriteRange = new List<ApiParameter>() { Domain, Address, Data };
 			public static List<ApiParameter> EventParams = new List<ApiParameter>() { EventName, Address, Length, Callback };
@@ -140,6 +146,8 @@ namespace BizHawk.Client.Common.Api.Public
 			//Enumerable.Zip(args, args.Skip(1), (addr, len) => new string[] { addr, len })
 			args.Select((val, i) => new { val, i }).GroupBy(v => v.i / 2).Select(g => g.Select(v => v.val))
 			.Select(a => BytesToHexString(innerCall(GetAddr(a, domain), GetLength(a), domain))));
+		// CheckFlag
+		private Func<IEnumerable<string>, string, string> WrapMemoryCall(Func<int, int, string, int> innerCall, int bytesOut = 1) => (IEnumerable<string> args, string domain) => innerCall(GetAddr(args, domain), GetValue(args), domain).ToString($"X{bytesOut * 2}");
 
 		private static Func<IEnumerable<string>, string, string> WrapVoidDomain(Action<string> innerCall) => (IEnumerable<string> args, string domain) =>
 		{
@@ -193,7 +201,7 @@ namespace BizHawk.Client.Common.Api.Public
 			return $"{d}\t({byteLength} bytes)";
 		}
 
-		private string SetMemoryEvent(MemoryCallbackType type, string callback, uint address, uint bytes, string name, uint? checkAddress = null, uint checkValue = 0, string  domain = "System Bus")
+		private string SetMemoryEvent(MemoryCallbackType type, string callback, uint address, uint bytes, string name, uint? checkAddress = null, uint checkValue = 0, string domain = "System Bus")
 		{
 			domain = NormalizeDomain(domain);
 			try
@@ -234,6 +242,14 @@ namespace BizHawk.Client.Common.Api.Public
 				throw new ApiError($"{Emulator.Attributes().CoreName} does not support memory execute callbacks.");
 			throw new ApiError($"{Emulator.Attributes().CoreName} does not support memory callbacks.");
 		}
+
+		private int FlagByte(int flagsAddr, int flag) => flagsAddr + (flag / 8);
+		private uint FlagMask(int flag) => (uint)(1 << flag % 8);
+		private uint ReadFlagByte(int flagsAddr, int flag, string domain = null) => ReadUnsignedByte(FlagByte(flagsAddr, flag), domain);
+
+		private int CheckFlag(int flagsAddr, int flag, string domain = null) => ((ReadFlagByte(flagsAddr, flag, domain) & FlagMask(flag)) > 0) ? 1 : 0;
+		private void SetFlag(int flagsAddr, int flag, string domain = null) => WriteUnsignedByte(FlagByte(flagsAddr, flag), ReadFlagByte(flagsAddr, flag, domain) | FlagMask(flag), domain);
+		private void ClearFlag(int flagsAddr, int flag, string domain = null) => WriteUnsignedByte(FlagByte(flagsAddr, flag), ReadFlagByte(flagsAddr, flag, domain) & ~FlagMask(flag), domain);
 
 		private void RemoveMemoryEvent(string name) => DebuggableCore.MemoryCallbacks.Remove(DebuggableCore.MemoryCallbacks.FirstOrDefault(c => c.Name == name).Callback);
 
