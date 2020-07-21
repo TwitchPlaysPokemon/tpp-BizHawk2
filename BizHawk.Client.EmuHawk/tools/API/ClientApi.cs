@@ -41,6 +41,7 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			new ApiCommand("ToggleRewind", WrapUITask(WrapVoid(rewindOn=>ToggleRewind(string.IsNullOrWhiteSpace(rewindOn) ? (bool?)null : bool.Parse(rewindOn)))), new List<ApiParameter>(){ ToggleParam }, "Turns rewinding on and off"),
 			new ApiCommand("ToggleFastForward", WrapUITask(WrapVoid(fastOn=>ToggleFastForward(string.IsNullOrWhiteSpace(fastOn) ? (bool?)null : bool.Parse(fastOn)))), new List<ApiParameter>(){ ToggleParam }, "Turns fast forward on and off"),
 			new ApiCommand("SetSpeedPercent", WrapUITask(WrapVoid(speed=>SetSpeed(string.IsNullOrWhiteSpace(speed) ? 100 : int.Parse(speed)))), new List<ApiParameter>() { SpeedParam }, "Runs emulator at the given Speed (100 is normal)"),
+			new ApiCommand("Reset", WrapUITask(WrapVoid(Reset)), new List<ApiParameter>(), "Reboots the current emulator core"),
 		};
 
 
@@ -177,6 +178,8 @@ namespace BizHawk.Client.EmuHawk.tools.Api
 			GlobalWin.MainForm.Unthrottle();
 			_unthrottleFrames += frames ?? 0;
 		}
+
+		public void Reset() => GlobalWin.MainForm.RebootCore();
 
 		public override void OnFrame(int frameCount)
 		{
