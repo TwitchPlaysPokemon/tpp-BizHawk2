@@ -13,9 +13,14 @@ using BizHawk.Client.EmuHawk.ToolExtensions;
 using BizHawk.Client.EmuHawk.WinFormExtensions;
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
+using static BizHawk.Client.EmuHawk.EmuLuaLibrary;
 
 namespace BizHawk.Client.EmuHawk
 {
+	public static class Locks //added as psuedo-global as there was no other way to get the scope to the http event where it is needed
+	{
+		public static readonly object LuaLock = new object();
+	}
 	public partial class LuaConsole : ToolFormBase, IToolFormAutoConfig
 	{
 		private const string IconColumnName = "Icon";
@@ -538,7 +543,11 @@ namespace BizHawk.Client.EmuHawk
 						var prohibit = lf.FrameWaiting && !includeFrameWaiters;
 						if (!prohibit)
 						{
-							var result = LuaImp.ResumeScript(lf);
+							ResumeResult result;
+							lock (Locks.LuaLock)
+							{
+								result = LuaImp.ResumeScript(lf);
+							};
 							if (result.Terminated)
 							{
 								LuaImp.CallExitEvent(lf);
