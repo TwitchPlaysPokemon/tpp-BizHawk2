@@ -118,7 +118,11 @@ namespace BizHawk.Client.Common
 						{
 							queryString[key] = qs[key];
 						}
-						var result = luaf.Call(queryString, body);
+						object[] result;
+						lock (Locks.LuaLock)
+						{
+							result = luaf.Call(queryString, body);
+						}
 						if (result == null || result.Length < 1)
 						{
 							return null;
