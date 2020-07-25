@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using BizHawk.Common;
 
 namespace BizHawk.Emulation.Common
 {
@@ -15,7 +16,10 @@ namespace BizHawk.Emulation.Common
 		{
 			foreach (var action in this)
 			{
-				action();
+				lock (Locks.LuaLock)
+				{
+					action();
+				}
 			}
 		}
 

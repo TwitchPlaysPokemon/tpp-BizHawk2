@@ -17,10 +17,7 @@ using static BizHawk.Client.EmuHawk.EmuLuaLibrary;
 
 namespace BizHawk.Client.EmuHawk
 {
-	public static class Locks //added as psuedo-global as there was no other way to get the scope to the http event where it is needed
-	{
-		public static readonly object LuaLock = new object();
-	}
+
 	public partial class LuaConsole : ToolFormBase, IToolFormAutoConfig
 	{
 		private const string IconColumnName = "Icon";

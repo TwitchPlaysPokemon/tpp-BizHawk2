@@ -1,7 +1,7 @@
 ﻿using System;
 using NLua;
 using BizHawk.Client.Common.Services;
-using System.Collections.Generic;
+using BizHawk.Common;
 
 namespace BizHawk.Client.Common
 {
@@ -115,7 +115,7 @@ namespace BizHawk.Client.Common
 					{
 						var queryString = Lua.NewTable();
 						foreach (var key in qs.Keys)
-						{
+{
 							queryString[key] = qs[key];
 						}
 						object[] result;

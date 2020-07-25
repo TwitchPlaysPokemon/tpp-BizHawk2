@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using BizHawk.Common;
 
 namespace BizHawk.Emulation.Common
 {
@@ -74,7 +75,10 @@ namespace BizHawk.Emulation.Common
 				{
 					try
 					{
-						cb.Callback(addr, value, flags);
+						lock (Locks.LuaLock)
+						{
+							cb.Callback(addr, value, flags);
+						}
 					}
 					catch { }
 				}

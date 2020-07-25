@@ -5,6 +5,7 @@ using System.ComponentModel;
 using NLua;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
+using BizHawk.Common;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Local
@@ -43,7 +44,10 @@ namespace BizHawk.Client.Common
 
 			foreach (var exitCallback in exitCallbacks)
 			{
-				exitCallback.Call();
+				lock (Locks.LuaLock)
+				{
+					exitCallback.Call();
+				}
 			}
 		}
 
@@ -56,7 +60,10 @@ namespace BizHawk.Client.Common
 			{
 				foreach (var lf in lfs)
 				{
-					lf.Call(name);
+					lock (Locks.LuaLock)
+					{
+						lf.Call(name);
+					}
 				}
 			}
 			catch (Exception e)
@@ -72,7 +79,10 @@ namespace BizHawk.Client.Common
 			{
 				foreach (var lf in lfs)
 				{
-					lf.Call(name);
+					lock (Locks.LuaLock)
+					{
+						lf.Call(name);
+					}
 				}
 			}
 			catch (Exception e)
@@ -88,7 +98,10 @@ namespace BizHawk.Client.Common
 			{
 				foreach (var lf in lfs)
 				{
-					lf.Call();
+					lock (Locks.LuaLock)
+					{
+						lf.Call();
+					}
 				}
 			}
 			catch (Exception e)
@@ -104,7 +117,10 @@ namespace BizHawk.Client.Common
 			{
 				foreach (var lf in lfs)
 				{
-					lf.Call();
+					lock (Locks.LuaLock)
+					{
+						lf.Call();
+					}
 				}
 			}
 			catch (Exception e)
