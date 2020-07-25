@@ -115,7 +115,7 @@ namespace BizHawk.Client.Common
 					{
 						var queryString = Lua.NewTable();
 						foreach (var key in qs.Keys)
-{
+						{
 							queryString[key] = qs[key];
 						}
 						object[] result;
