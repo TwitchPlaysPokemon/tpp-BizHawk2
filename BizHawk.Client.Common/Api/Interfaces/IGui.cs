@@ -49,5 +49,7 @@ namespace BizHawk.Client.Common
 							  string fontfamily = null, string fontstyle = null, string horizalign = null, string vertalign = null);
 		void DrawText(int x, int y, string message, Color? forecolor = null, Color? backcolor = null, string fontfamily = null);
 		void Text(int x, int y, string message, Color? forecolor = null, string anchor = null);
+
+		Size DisplaySize { get; }
 	}
 }

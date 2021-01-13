@@ -496,6 +496,7 @@ namespace BizHawk.Client.EmuHawk
 			GlobalWin.OSD.AddGuiText(message,  pos, Color.Black, forecolor ?? Color.White);
 		}
 
+		public Size DisplaySize => new Size(_GUISurface?.Width ?? 0, _GUISurface?.Height ?? 0);
 		public void Dispose()
 		{
 			foreach (var brush in _solidBrushes.Values) brush.Dispose();
