@@ -210,6 +210,11 @@ namespace BizHawk.Client.Common.Api.Public
 					&& (type != MemoryCallbackType.Execute || DebuggableCore.MemoryCallbacks.ExecuteCallbacksAvailable))
 				{
 					name = name ?? callback;
+					
+					uint mask = 0;
+					for (var i = 0; i < bytes; i++)
+						mask |= (uint)(0xFF << (i * 8));
+
 					if (!HasDomain(domain))
 					{
 						throw new ApiError($"{Emulator.Attributes().CoreName} does not support memory callbacks on the domain {domain}");
@@ -217,7 +222,7 @@ namespace BizHawk.Client.Common.Api.Public
 					HttpClient client = new HttpClient();
 					DebuggableCore.MemoryCallbacks.Add(new MemoryCallback(
 						domain,
-						MemoryCallbackType.Execute,
+						type,
 						name,
 						(uint address, uint value, uint flags) =>
 						{
@@ -231,7 +236,7 @@ namespace BizHawk.Client.Common.Api.Public
 							}
 						},
 						address,
-						null
+						mask
 					));
 					return name;
 				}
